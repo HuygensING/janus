@@ -4,14 +4,17 @@ import io.dropwizard.Application;
 import io.dropwizard.Configuration;
 import io.dropwizard.setup.Environment;
 import nu.xom.Builder;
+import nu.xom.Document;
 import nu.xom.ParsingException;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
+import java.util.function.Function;
 
 /**
  * Web server.
@@ -27,8 +30,28 @@ public class Server extends Application<Server.Config> {
 
     @Path("/{file}")
     @GET
-    public AnnotatedText get(@PathParam("file") String file) throws ParsingException, IOException {
-      return new AnnotatedBytes(parser.build(file));
+    public AnnotatedText get(@PathParam("file") String file, @QueryParam("offsets") String offsetType)
+      throws ParsingException, IOException {
+
+      Function<Document, AnnotatedText> transform = null;
+
+      if (offsetType == null) {
+        offsetType = "byte";
+      }
+      switch (offsetType) {
+        case "byte":
+          transform = AnnotatedBytes::new;
+          break;
+        case "utf16":
+          transform = AnnotatedUtf16::new;
+          break;
+        case "codepoint":
+          transform = AnnotatedCodepoints::new;
+          break;
+        default:
+          throw new IllegalArgumentException("unknown value for parameter 'offsets'");
+      }
+      return transform.apply(parser.build(file));
     }
   }
 
