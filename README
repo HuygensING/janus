@@ -1,0 +1,8 @@
+Janus
+=====
+
+Janus converts XML to text-with-annotations, e.g.
+
+    <p>Hello, <b>world</b>!</p>
+
+Becomes "Hello, world!" with annotations (p, 0, 12), (b, 7, 11).
