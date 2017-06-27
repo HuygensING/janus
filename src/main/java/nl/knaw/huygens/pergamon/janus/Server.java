@@ -7,13 +7,14 @@ import nu.xom.Builder;
 import nu.xom.Document;
 import nu.xom.ParsingException;
 
-import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.function.Function;
 
 /**
@@ -28,30 +29,28 @@ public class Server extends Application<Server.Config> {
   public static class Resource {
     private static Builder parser = new Builder();
 
-    @Path("/{file}")
-    @GET
-    public AnnotatedText get(@PathParam("file") String file, @QueryParam("offsets") String offsetType)
+    @POST
+    public AnnotatedText transform(String input, @QueryParam("offsets") String offsetType)
       throws ParsingException, IOException {
-
-      Function<Document, AnnotatedText> transform = null;
+      Function<Document, AnnotatedText> transformer;
 
       if (offsetType == null) {
         offsetType = "byte";
       }
       switch (offsetType) {
         case "byte":
-          transform = AnnotatedBytes::new;
+          transformer = AnnotatedBytes::new;
           break;
         case "utf16":
-          transform = AnnotatedUtf16::new;
+          transformer = AnnotatedUtf16::new;
           break;
         case "codepoint":
-          transform = AnnotatedCodepoints::new;
+          transformer = AnnotatedCodepoints::new;
           break;
         default:
-          throw new IllegalArgumentException("unknown value for parameter 'offsets'");
+          throw new WebApplicationException("unknown value for parameter 'offsets'");
       }
-      return transform.apply(parser.build(file));
+      return transformer.apply(parser.build(new StringReader(input)));
     }
   }
 
