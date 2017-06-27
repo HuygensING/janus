@@ -16,7 +16,7 @@ Compile and run::
     mvn clean package
     ./target/appassembler/bin/janus server
 
-(or use the Dockerfile, ``docker run $(docker build -q .)``). Then POST
-an XML file::
+(or use the Dockerfile, ``docker run -p 8080:8080 $(docker build -q .)``).
+Then POST an XML file::
 
     curl -d '<p>Hello, <b>world</b>!</p>' http://localhost:8080
