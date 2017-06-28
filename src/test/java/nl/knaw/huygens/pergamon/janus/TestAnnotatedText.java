@@ -28,7 +28,7 @@ public abstract class TestAnnotatedText {
       Annotation x = reference[i];
       Annotation y = annotations.get(i);
 
-      assertEquals(x.tag, y.tag);
+      assertEquals(x.type, y.type);
       assertEquals(x.offset, y.offset);
       assertEquals(x.length, y.length);
 

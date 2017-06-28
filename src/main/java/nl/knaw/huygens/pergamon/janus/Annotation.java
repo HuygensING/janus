@@ -16,10 +16,10 @@ public class Annotation {
   public final int length;
 
   @JsonProperty
-  public final String tag;
+  public final String type;
 
   public Annotation(String tag, int offset, int length) {
-    this.tag = tag;
+    this.type = "tag:" + tag;
     this.length = length;
     this.offset = offset;
   }
