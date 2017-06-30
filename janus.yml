@@ -1,0 +1,3 @@
+# Name of document index and of document type in Elasticsearch
+documentIndex: docs
+documentType: document
