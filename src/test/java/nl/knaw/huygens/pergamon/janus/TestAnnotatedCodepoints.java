@@ -9,8 +9,7 @@ public class TestAnnotatedCodepoints extends TestAnnotatedText {
   }
 
   @Override
-  protected Annotation ann(String tag, int offset8, int length8, int offset16, int length16, int offsetCP,
-                           int lengthCP) {
-    return new Annotation(tag, offsetCP, lengthCP);
+  protected Annotation ann(String tag, int start8, int end8, int start16, int end16, int startCP, int endCP) {
+    return new Annotation(tag, startCP, endCP);
   }
 }

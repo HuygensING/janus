@@ -10,17 +10,17 @@ public class Annotation {
   public final Map<String, String> attributes = new TreeMap<>();
 
   @JsonProperty
-  public final int offset;
+  public final int start;
 
   @JsonProperty
-  public final int length;
+  public final int end;
 
   @JsonProperty
   public final String type;
 
-  public Annotation(String tag, int offset, int length) {
+  public Annotation(String tag, int start, int end) {
     this.type = "tag:" + tag;
-    this.length = length;
-    this.offset = offset;
+    this.end = end;
+    this.start = start;
   }
 }

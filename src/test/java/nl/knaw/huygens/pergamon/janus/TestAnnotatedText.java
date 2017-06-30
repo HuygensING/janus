@@ -29,8 +29,8 @@ public abstract class TestAnnotatedText {
       Annotation y = annotations.get(i);
 
       assertEquals(x.type, y.type);
-      assertEquals(x.offset, y.offset);
-      assertEquals(x.length, y.length);
+      assertEquals(x.start, y.start);
+      assertEquals(x.end, y.end);
 
       Iterator<Map.Entry<String, String>> iterx = x.attributes.entrySet().iterator();
       Iterator<Map.Entry<String, String>> itery = y.attributes.entrySet().iterator();
@@ -46,15 +46,15 @@ public abstract class TestAnnotatedText {
 
   protected abstract AnnotatedText parse(Document doc);
 
-  // Constructs ann annotation with the required tag, offset, length.
-  // Implementations choose whether to use 8-bit, 16-bit, or codepoint length and offset.
+  // Constructs ann annotation with the required tag, start, end.
+  // Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.
   protected abstract Annotation ann(String tag,
-                                    int offset8, int length8, int offset16, int length16, int offsetCP, int lengthCP);
+                                    int start8, int end8, int start16, int end16, int startCP, int endCP);
 
   private Annotation ann(String tag,
-                         int offset8, int length8, int offset16, int length16, int offsetCP, int lengthCP,
+                         int start8, int end8, int start16, int end16, int startCP, int endCP,
                          String... attrs) {
-    Annotation ann = ann(tag, offset8, length8, offset16, length16, offsetCP, lengthCP);
+    Annotation ann = ann(tag, start8, end8, start16, end16, startCP, endCP);
     for (int i = 0; i < attrs.length; i += 2) {
       ann.attributes.put(attrs[i], attrs[i + 1]);
     }
