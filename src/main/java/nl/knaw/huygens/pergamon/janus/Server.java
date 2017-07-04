@@ -70,7 +70,12 @@ public class Server extends Application<Server.Config> {
     @Path("/get/{id}")
     @GET
     public Object get(@PathParam("id") String id) throws IOException {
-      return backend.getWithAnnotations(id);
+      Object result = backend.getWithAnnotations(id);
+      if (result == null) {
+        // TODO: improve error handling
+        result = 404;
+      }
+      return result;
     }
 
     @Consumes("application/json")

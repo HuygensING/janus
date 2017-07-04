@@ -56,6 +56,9 @@ public class ElasticBackend implements Backend {
   @Override
   public Map<String, Object> getWithAnnotations(String id) throws IOException {
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
+    if (!response.isExists()) {
+      return null;
+    }
     String body = (String) response.getSourceAsMap().get("body");
 
     HashMap<String, Object> result = new HashMap<>();
