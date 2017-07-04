@@ -5,10 +5,10 @@ import nu.xom.Document;
 /**
  * Converts XML to text-with-annotations. Uses UTF-16 offsets.
  */
-public class AnnotatedCodepoints extends AnnotatedText {
+public class TaggedCodepoints extends TaggedText {
   private int offset = 0;
 
-  public AnnotatedCodepoints(Document doc) {
+  public TaggedCodepoints(Document doc) {
     super(doc);
   }
 

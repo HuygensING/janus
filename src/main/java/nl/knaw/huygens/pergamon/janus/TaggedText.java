@@ -14,24 +14,24 @@ import java.util.List;
 import static java.util.stream.IntStream.range;
 
 /**
- * Base class for XML-to-text-with-annotations converters.
+ * Base class for XML-to-text-with-tags converters.
  */
-abstract class AnnotatedText {
-  private final List<Annotation> annotations = new ArrayList<>();
+abstract class TaggedText {
+  private final List<Tag> tags = new ArrayList<>();
   final StringBuilder sb = new StringBuilder();
 
-  AnnotatedText(Document doc) {
+  TaggedText(Document doc) {
     traverse(doc.getRootElement());
   }
 
   /**
-   * The annotations corresponding to tags etc. in the original XML.
+   * The tags corresponding to tags etc. in the original XML.
    *
-   * @return An immutable list of annotations.
+   * @return An immutable list of tags.
    */
   @JsonProperty
-  public List<Annotation> annotations() {
-    return Collections.unmodifiableList(annotations);
+  public List<Tag> tags() {
+    return Collections.unmodifiableList(tags);
   }
 
   @JsonProperty
@@ -49,13 +49,13 @@ abstract class AnnotatedText {
       append(node.getValue());
     } else if (node instanceof Element) {
       int base = offset();
-      int insert = annotations.size();
-      annotations.add(null);
+      int insert = tags.size();
+      tags.add(null);
 
       range(0, node.getChildCount()).forEach(i -> traverse(node.getChild(i)));
 
-      Annotation ann = new Annotation(((Element) node).getQualifiedName(), base, offset());
-      annotations.set(insert, ann);
+      Tag ann = new Tag(((Element) node).getQualifiedName(), base, offset());
+      tags.set(insert, ann);
       range(0, ((Element) node).getAttributeCount())
         .forEach(i -> {
           Attribute attr = ((Element) node).getAttribute(i);

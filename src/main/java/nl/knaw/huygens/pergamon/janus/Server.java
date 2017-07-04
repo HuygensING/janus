@@ -9,6 +9,7 @@ import nu.xom.Document;
 import nu.xom.ParsingException;
 import org.hibernate.validator.constraints.NotEmpty;
 
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -52,6 +53,14 @@ public class Server extends Application<Server.Config> {
       return backend.getWithAnnotations(id);
     }
 
+    @Consumes("application/json")
+    @Path("/annotate/{target}/{id}")
+    @POST
+    public int putAnnotation(@PathParam("target") String target, @PathParam("id") String id, Annotation ann)
+      throws IOException {
+      return backend.putAnnotation(ann, id, target);
+    }
+
     @Path("/putxml/{id}")
     @POST
     public int putXml(@PathParam("id") String id, String content) throws IOException, ParsingException {
@@ -60,22 +69,22 @@ public class Server extends Application<Server.Config> {
 
     @Path("/transform")
     @POST
-    public AnnotatedText transform(String input, @QueryParam("offsets") String offsetType)
+    public TaggedText transform(String input, @QueryParam("offsets") String offsetType)
       throws ParsingException, IOException {
-      Function<Document, AnnotatedText> transformer;
+      Function<Document, TaggedText> transformer;
 
       if (offsetType == null) {
         offsetType = "byte";
       }
       switch (offsetType) {
         case "byte":
-          transformer = AnnotatedBytes::new;
+          transformer = TaggedBytes::new;
           break;
         case "utf16":
-          transformer = AnnotatedUtf16::new;
+          transformer = TaggedUtf16::new;
           break;
         case "codepoint":
-          transformer = AnnotatedCodepoints::new;
+          transformer = TaggedCodepoints::new;
           break;
         default:
           throw new WebApplicationException("unknown value for parameter 'offsets'");

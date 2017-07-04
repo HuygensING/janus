@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.EMPTY_MAP;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -37,6 +38,10 @@ public class ElasticBackend implements Backend {
    * @throws UnknownHostException
    */
   public ElasticBackend(String documentIndex, String documentType) throws UnknownHostException {
+    if (ANNOTATION_INDEX.equals(documentIndex) && ANNOTATION_TYPE.equals(documentType)) {
+      throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
+    }
+
     client = new PreBuiltTransportClient(Settings.EMPTY)
       .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300));
     this.documentIndex = documentIndex;
@@ -69,9 +74,17 @@ public class ElasticBackend implements Backend {
     List<Object> result = new ArrayList<>();
     response.getHits().forEach(hit -> {
       Map<String, Object> map = hit.getSourceAsMap();
+      // Move bodies into separate documents?
+      map.remove("body");
+
       // Remove attributes used for internal purposes.
       map.remove("order");
       map.remove("root");
+      map.remove("target");
+
+      if (((Map<?, ?>) map.getOrDefault("attrib", EMPTY_MAP)).isEmpty()) {
+        map.remove("attrib");
+      }
 
       result.add(map);
     });
@@ -79,8 +92,39 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
+  public int putAnnotation(Annotation ann, String id, String target) throws IOException {
+    // If there's a document with the id, we annotate that, else the annotation with the id.
+    // XXX we need to be smarter, e.g., address the document by index/type/id.
+    GetResponse got = client.prepareGet(documentIndex, documentType, target).get();
+    String root;
+    if (got.isExists()) {
+      root = id;
+    } else {
+      got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, target).get();
+      if (!got.isExists()) {
+        return 404;
+      }
+      root = (String) got.getField("root").getValue();
+    }
+
+    IndexResponse response =
+      client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, id)
+            .setSource(jsonBuilder()
+              .startObject()
+              .field("start", ann.start)
+              .field("end", ann.end)
+              .field("attrib", ann.attributes)
+              .field("body", ann.type)
+              .field("target", target)
+              .field("root", root)
+              .endObject()
+            ).get();
+    return response.status().getStatus();
+  }
+
+  @Override
   public int putXml(String id, Document document) throws IOException {
-    AnnotatedText annotated = new AnnotatedCodepoints(document);
+    TaggedText annotated = new TaggedCodepoints(document);
 
     IndexResponse response = client.prepareIndex(documentIndex, documentType, id)
                                    .setSource(jsonBuilder()
@@ -93,16 +137,17 @@ public class ElasticBackend implements Backend {
       return status;
     }
 
-    List<Annotation> annotations = annotated.annotations();
-    for (int i = 0; i < annotations.size(); i++) {
-      Annotation ann = annotations.get(i);
+    List<Tag> tags = annotated.tags();
+    for (int i = 0; i < tags.size(); i++) {
+      Tag ann = tags.get(i);
       response = client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
                        .setSource(jsonBuilder()
                          .startObject()
                          .field("start", ann.start)
                          .field("end", ann.end)
                          .field("attrib", ann.attributes)
-                         .field("body", ann.type)
+                         .field("tag", ann.tag)
+                         .field("type", "tag")
                          .field("target", id)
                          .field("root", id)
                          // The order field is only used to sort, so that we get XML tags back

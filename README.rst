@@ -8,15 +8,42 @@ Janus converts XML to text-with-annotations, e.g.::
 Becomes "Hello, world!" with annotations (p, 0, 12), (b, 7, 11).
 
 
-Usage
------
+Usage as an XML transformer
+---------------------------
 
 Compile and run::
 
     mvn clean package
-    ./target/appassembler/bin/janus server
+    ./target/appassembler/bin/janus server janus.yml
 
 (or use the Dockerfile, ``docker run -p 8080:8080 $(docker build -q .)``).
 Then POST an XML file::
 
     curl -d '<p>Hello, <b>world</b>!</p>' http://localhost:8080/transform
+
+
+Usage with an Elasticsearch backend
+-----------------------------------
+
+Start Elasticsearch with the appropriate settings::
+
+    cd elasticsearch-setup
+    docker run -p 9200:9200 -p 9300:9300 $(docker build -q)
+
+Add the annotations index (optional but strongly recommended)::
+
+    sh put_index.sh
+
+You can now upload an XML file to have it indexed as a document with one
+annotation per tag::
+
+    curl -X POST http://localhost:8080/putxml/some_id -d @somefile.xml
+    curl http://localhost:8080/get/some_id
+
+Add an annotation::
+
+    curl -H 'Content-Type: application/json' -X POST \
+        http://localhost:8080/annotate/some_id/annotation_id -d '{
+            "start": 4, "end": 10, "body": "Note!", "tag": "note",
+            "type": "user", "target": "large.xml"
+        }'

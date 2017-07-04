@@ -6,10 +6,10 @@ import nu.xom.Document;
 /**
  * Converts XML to text-with-annotations. Uses byte offsets.
  */
-public class AnnotatedBytes extends AnnotatedText {
+public class TaggedBytes extends TaggedText {
   private int offset = 0;
 
-  public AnnotatedBytes(Document doc) {
+  public TaggedBytes(Document doc) {
     super(doc);
   }
 

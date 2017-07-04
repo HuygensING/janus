@@ -8,8 +8,8 @@ import nu.xom.Document;
  * UTF-16 offsets are useful for Java and JavaScript usage: those languages allow fast indexing/slicing using these
  * offsets.
  */
-public class AnnotatedUtf16 extends AnnotatedText {
-  public AnnotatedUtf16(Document doc) {
+public class TaggedUtf16 extends TaggedText {
+  public TaggedUtf16(Document doc) {
     super(doc);
   }
 
