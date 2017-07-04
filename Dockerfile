@@ -14,6 +14,8 @@ RUN cd /build \
  && cd / \
  && rm -rf /build
 
+COPY janus.yml .
+
 EXPOSE 8080 8081
 
-ENTRYPOINT ["/usr/local/bin/janus", "server"]
+ENTRYPOINT ["/usr/local/bin/janus", "server", "janus.yml"]
