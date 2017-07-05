@@ -3,8 +3,6 @@ package nl.knaw.huygens.pergamon.janus;
 import com.google.common.collect.ImmutableMap;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
-import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
-import nu.xom.Document;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
@@ -111,6 +109,18 @@ public class ElasticBackend implements Backend {
     }).collect(Collectors.toList());
   }
 
+  // prepareIndex + setOpType(CREATE)
+  private IndexRequestBuilder prepareCreate(String index, String type, @Nullable String id) {
+    IndexRequestBuilder request = client.prepareIndex(index, type, id);
+    if (id != null) {
+      // the create op explicitly requires an id to be set ... If you want to have
+      // automatic ID generation you need to use the "index" operation.
+      // https://github.com/elastic/elasticsearch/issues/21535#issuecomment-260467699
+      request.setOpType(CREATE);
+    }
+    return request;
+  }
+
   @Override
   public PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException {
     // If there's a document with the id, we annotate that, else the annotation with the id.
@@ -127,15 +137,7 @@ public class ElasticBackend implements Backend {
       root = (String) got.getField("root").getValue();
     }
 
-    IndexRequestBuilder request = client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, id);
-    if (id != null) {
-      // the create op explicitly requires an id to be set ... If you want to have
-      // automatic ID generation you need to use the "index" operation.
-      // https://github.com/elastic/elasticsearch/issues/21535#issuecomment-260467699
-      request.setOpType(CREATE);
-    }
-
-    IndexResponse response = request.setSource(
+    IndexResponse response = prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, id).setSource(
       jsonBuilder().startObject()
                    .field("start", ann.start)
                    .field("end", ann.end)
@@ -151,19 +153,20 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResponse putXml(String id, Document document) throws IOException {
-    TaggedText annotated = new TaggedCodepoints(document);
+  public PutResponse putXml(String id, TaggedCodepoints document) throws IOException {
+    IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
+      jsonBuilder().startObject()
+                   .field("body", document.text())
+                   .endObject()
+    ).get();
+    int status = response.status().getStatus();
+    if (status < 200 || status >= 300) {
+      return new PutResponse(null, status);
+    }
+    id = response.getId();
 
+    List<Tag> tags = document.tags();
     BulkRequestBuilder bulk = client.prepareBulk();
-    bulk.add(client.prepareIndex(documentIndex, documentType, id)
-                   .setOpType(CREATE)
-                   .setSource(jsonBuilder()
-                     .startObject()
-                     .field("body", annotated.text())
-                     .endObject()
-                   ));
-
-    List<Tag> tags = annotated.tags();
     for (int i = 0; i < tags.size(); i++) {
       Tag ann = tags.get(i);
       bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
@@ -185,11 +188,11 @@ public class ElasticBackend implements Backend {
                      ));
     }
 
-    BulkItemResponse[] response = bulk.get().getItems();
-    for (int i = 0; i < response.length; i++) {
-      int status = response[i].status().getStatus();
+    BulkItemResponse[] items = bulk.get().getItems();
+    for (BulkItemResponse item : items) {
+      status = item.status().getStatus();
       if (status < 200 || status >= 300) {
-        return new PutResponse(null, 404);
+        return new PutResponse(id, status);
       }
     }
     return new PutResponse(id, 200);

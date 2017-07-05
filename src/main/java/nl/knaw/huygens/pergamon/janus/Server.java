@@ -125,12 +125,18 @@ public class Server extends Application<Server.Config> {
       return response.build();
     }
 
+    @Path("/putxml")
+    @POST
+    public Response putXml(String content) throws IOException {
+      return putXml(null, content);
+    }
+
     @Path("/putxml/{id}")
     @POST
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
         Backend.PutResponse result = backend.putXml(id, parser.build(new StringReader(content)));
-        return Response.status(result.status).entity(id).build();
+        return Response.status(result.status).entity(result.id).build();
       } catch (ParsingException e) {
         return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
       }

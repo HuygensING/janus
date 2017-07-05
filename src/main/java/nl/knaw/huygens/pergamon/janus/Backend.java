@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nu.xom.Document;
 
 import javax.annotation.Nullable;
@@ -33,5 +34,9 @@ public interface Backend extends AutoCloseable {
    */
   Map<String, Object> getWithAnnotations(String id) throws IOException;
 
-  PutResponse putXml(String id, Document document) throws IOException;
+  default PutResponse putXml(String id, Document document) throws IOException {
+    return putXml(id, new TaggedCodepoints(document));
+  }
+
+  PutResponse putXml(String id, TaggedCodepoints document) throws IOException;
 }
