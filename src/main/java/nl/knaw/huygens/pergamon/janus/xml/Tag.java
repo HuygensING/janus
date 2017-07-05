@@ -1,4 +1,4 @@
-package nl.knaw.huygens.pergamon.janus;
+package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

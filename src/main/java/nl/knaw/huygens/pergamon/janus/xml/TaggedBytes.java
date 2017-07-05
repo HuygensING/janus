@@ -1,4 +1,4 @@
-package nl.knaw.huygens.pergamon.janus;
+package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.google.common.base.Utf8;
 import nu.xom.Document;

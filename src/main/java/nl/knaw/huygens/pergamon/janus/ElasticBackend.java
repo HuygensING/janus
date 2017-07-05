@@ -1,5 +1,8 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import nl.knaw.huygens.pergamon.janus.xml.Tag;
+import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
+import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
 import nu.xom.Document;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;

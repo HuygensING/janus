@@ -1,4 +1,4 @@
-package nl.knaw.huygens.pergamon.janus;
+package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nu.xom.Attribute;
@@ -16,7 +16,7 @@ import static java.util.stream.IntStream.range;
 /**
  * Base class for XML-to-text-with-tags converters.
  */
-abstract class TaggedText {
+public abstract class TaggedText {
   private final List<Tag> tags = new ArrayList<>();
   final StringBuilder sb = new StringBuilder();
 

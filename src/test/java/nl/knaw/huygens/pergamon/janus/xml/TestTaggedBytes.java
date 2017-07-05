@@ -1,15 +1,15 @@
-package nl.knaw.huygens.pergamon.janus;
+package nl.knaw.huygens.pergamon.janus.xml;
 
 import nu.xom.Document;
 
-public class TestTaggedCodepoints extends TestTaggedText {
+public class TestTaggedBytes extends TestTaggedText {
   @Override
   protected TaggedText parse(Document doc) {
-    return new TaggedCodepoints(doc);
+    return new TaggedBytes(doc);
   }
 
   @Override
   protected Tag tag(String tag, int start8, int end8, int start16, int end16, int startCP, int endCP) {
-    return new Tag(tag, startCP, endCP);
+    return new Tag(tag, start8, end8);
   }
 }
