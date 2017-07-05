@@ -10,13 +10,13 @@ import nu.xom.ParsingException;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.io.StringReader;
@@ -35,6 +35,26 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private String documentType;
+  }
+
+  private enum OffsetType {
+    BYTE(TaggedBytes::new),
+    UTF16(TaggedUtf16::new),
+    CODEPOINT(TaggedCodepoints::new);
+
+    private final Function<Document, TaggedText> transformer;
+
+    public static OffsetType fromString(String type) {
+      return OffsetType.valueOf(type.toUpperCase());
+    }
+
+    OffsetType(Function<Document, TaggedText> transformer) {
+      this.transformer = transformer;
+    }
+
+    TaggedText transform(Document document) {
+      return transformer.apply(document);
+    }
   }
 
   @Path("/")
@@ -69,27 +89,10 @@ public class Server extends Application<Server.Config> {
 
     @Path("/transform")
     @POST
-    public TaggedText transform(String input, @QueryParam("offsets") String offsetType)
+    public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
       throws ParsingException, IOException {
-      Function<Document, TaggedText> transformer;
 
-      if (offsetType == null) {
-        offsetType = "byte";
-      }
-      switch (offsetType) {
-        case "byte":
-          transformer = TaggedBytes::new;
-          break;
-        case "utf16":
-          transformer = TaggedUtf16::new;
-          break;
-        case "codepoint":
-          transformer = TaggedCodepoints::new;
-          break;
-        default:
-          throw new WebApplicationException("unknown value for parameter 'offsets'");
-      }
-      return transformer.apply(parser.build(new StringReader(input)));
+      return offsetType.transform(parser.build(new StringReader(input)));
     }
   }
 
