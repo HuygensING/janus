@@ -5,6 +5,8 @@ import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
 import nu.xom.Document;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
@@ -132,44 +134,44 @@ public class ElasticBackend implements Backend {
   public int putXml(String id, Document document) throws IOException {
     TaggedText annotated = new TaggedCodepoints(document);
 
-    IndexResponse response = client.prepareIndex(documentIndex, documentType, id)
-                                   .setOpType(CREATE)
-                                   .setSource(jsonBuilder()
-                                     .startObject()
-                                     .field("body", annotated.text())
-                                     .endObject()
-                                   ).get();
-    int status = response.status().getStatus();
-    if (status < 200 || status >= 300) {
-      return status;
-    }
+    BulkRequestBuilder bulk = client.prepareBulk();
+    bulk.add(client.prepareIndex(documentIndex, documentType, id)
+                   .setOpType(CREATE)
+                   .setSource(jsonBuilder()
+                     .startObject()
+                     .field("body", annotated.text())
+                     .endObject()
+                   ));
 
     List<Tag> tags = annotated.tags();
     for (int i = 0; i < tags.size(); i++) {
       Tag ann = tags.get(i);
-      response = client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
-                       .setOpType(CREATE)
-                       .setSource(jsonBuilder()
-                         .startObject()
-                         .field("start", ann.start)
-                         .field("end", ann.end)
-                         .field("attrib", ann.attributes)
-                         .field("tag", ann.tag)
-                         .field("type", "tag")
-                         .field("target", id)
-                         .field("root", id)
-                         // The order field is only used to sort, so that we get XML tags back
-                         // in exactly the order they appeared in the original.
-                         // XXX do we need this?
-                         .field("order", i)
-                         .endObject()
-                       ).get();
-      status = response.status().getStatus();
+      bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
+                     .setOpType(CREATE)
+                     .setSource(jsonBuilder()
+                       .startObject()
+                       .field("start", ann.start)
+                       .field("end", ann.end)
+                       .field("attrib", ann.attributes)
+                       .field("tag", ann.tag)
+                       .field("type", "tag")
+                       .field("target", id)
+                       .field("root", id)
+                       // The order field is only used to sort, so that we get XML tags back
+                       // in exactly the order they appeared in the original.
+                       // XXX do we need this?
+                       .field("order", i)
+                       .endObject()
+                     ));
+    }
+
+    BulkItemResponse[] response = bulk.get().getItems();
+    for (int i = 0; i < response.length; i++) {
+      int status = response[i].status().getStatus();
       if (status < 200 || status >= 300) {
         return status;
       }
     }
-
     return 200;
   }
 }
