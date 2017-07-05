@@ -22,10 +22,16 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.function.Function;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
 
 /**
  * Web server.
@@ -70,7 +76,7 @@ public class Server extends Application<Server.Config> {
   @Produces(MediaType.APPLICATION_JSON)
   public static class Resource {
     private final Backend backend;
-    private static Builder parser = new Builder();
+    private static final Builder parser = new Builder();
 
     public Resource(Config config) throws UnknownHostException {
       backend = new ElasticBackend(config.documentIndex, config.documentType);
@@ -78,27 +84,32 @@ public class Server extends Application<Server.Config> {
 
     @Path("/get/{id}")
     @GET
-    public Object get(@PathParam("id") String id) throws IOException {
-      Object result = backend.getWithAnnotations(id);
+    public Response get(@PathParam("id") String id) throws IOException {
+      Map<String, Object> result = backend.getWithAnnotations(id);
       if (result == null) {
-        // TODO: improve error handling
-        result = 404;
+        return Response.status(NOT_FOUND).build();
       }
-      return result;
+      return Response.status(OK).entity(result).build();
     }
 
     @Consumes("application/json")
     @Path("/annotate/{target}/{id}")
     @POST
-    public int putAnnotation(@PathParam("target") String target, @PathParam("id") String id, Annotation ann)
+    public Response putAnnotation(@PathParam("target") String target, @PathParam("id") String id, Annotation ann)
       throws IOException {
-      return backend.putAnnotation(ann, id, target);
+      int code = backend.putAnnotation(ann, id, target);
+      return Response.status(code).entity(id).build();
     }
 
     @Path("/putxml/{id}")
     @POST
-    public int putXml(@PathParam("id") String id, String content) throws IOException, ParsingException {
-      return backend.putXml(id, parser.build(new StringReader(content)));
+    public Response putXml(@PathParam("id") String id, String content) throws IOException {
+      try {
+        int code = backend.putXml(id, parser.build(new StringReader(content)));
+        return Response.status(code).entity(id).build();
+      } catch (ParsingException e) {
+        return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
+      }
     }
 
     @Path("/transform")
