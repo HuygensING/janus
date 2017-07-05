@@ -16,6 +16,7 @@
 
     <jdk.version>1.8</jdk.version>
     <maven-appassembler-plugin.version>1.10</maven-appassembler-plugin.version>
+    <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
   </properties>
 
   <build>
@@ -23,6 +24,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
           <source>${jdk.version}</source>
           <target>${jdk.version}</target>
