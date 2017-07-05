@@ -48,6 +48,11 @@ public class Server extends Application<Server.Config> {
       return OffsetType.valueOf(type.toUpperCase());
     }
 
+    @Override
+    public String toString() {
+      return super.toString().toLowerCase();
+    }
+
     OffsetType(Function<Document, TaggedText> transformer) {
       this.transformer = transformer;
     }
