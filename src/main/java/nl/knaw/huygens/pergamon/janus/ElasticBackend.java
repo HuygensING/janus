@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.EMPTY_MAP;
+import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -112,6 +113,7 @@ public class ElasticBackend implements Backend {
 
     IndexResponse response =
       client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, id)
+            .setOpType(CREATE)
             .setSource(jsonBuilder()
               .startObject()
               .field("start", ann.start)
@@ -130,6 +132,7 @@ public class ElasticBackend implements Backend {
     TaggedText annotated = new TaggedCodepoints(document);
 
     IndexResponse response = client.prepareIndex(documentIndex, documentType, id)
+                                   .setOpType(CREATE)
                                    .setSource(jsonBuilder()
                                      .startObject()
                                      .field("body", annotated.text())
@@ -144,6 +147,7 @@ public class ElasticBackend implements Backend {
     for (int i = 0; i < tags.size(); i++) {
       Tag ann = tags.get(i);
       response = client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
+                       .setOpType(CREATE)
                        .setSource(jsonBuilder()
                          .startObject()
                          .field("start", ann.start)
