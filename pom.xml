@@ -9,6 +9,11 @@
   <version>1.0-SNAPSHOT</version>
 
   <properties>
+    <!-- Encoding: everything UTF-8, please -->
+    <encoding>UTF-8</encoding>
+    <project.build.sourceEncoding>${encoding}</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>${encoding}</project.reporting.outputEncoding>
+
     <jdk.version>1.8</jdk.version>
     <maven-appassembler-plugin.version>1.10</maven-appassembler-plugin.version>
   </properties>
