@@ -30,7 +30,7 @@ Start Elasticsearch with the appropriate settings::
     cd elasticsearch-setup
     docker run -p 9200:9200 -p 9300:9300 $(docker build -q .)
 
-Add the annotations index (optional but strongly recommended)::
+Add the annotations index (optional, but strongly recommended)::
 
     sh put_index.sh
 
@@ -47,3 +47,17 @@ Add an annotation::
             "start": 4, "end": 10, "body": "Note!", "tag": "note",
             "type": "user", "target": "large.xml"
         }'
+
+
+Example: bulk indexing
+~~~~~~~~~~~~~~~~~~~~~~
+To upload XML files in bulk for indexing, use something like::
+
+    find some_dir -name '*.xml' -print0 |
+        xargs -0 -n 1 sh -c '
+            curl -s -XPOST http://localhost:8080/putxml/$(uuidgen) -d @$0
+            echo " " $0
+        '
+
+This indexes all XML files below ``some_dir``, assigning to each a UUID.
+It prints to stdout a list of UUID/path pairs.
