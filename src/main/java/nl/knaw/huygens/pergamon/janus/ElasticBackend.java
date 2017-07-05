@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.google.common.collect.ImmutableMap;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
@@ -15,10 +16,10 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
@@ -63,13 +64,10 @@ public class ElasticBackend implements Backend {
     if (!response.isExists()) {
       return null;
     }
-    String body = (String) response.getSourceAsMap().get("body");
 
-    HashMap<String, Object> result = new HashMap<>();
-    result.put("text", body);
-    result.put("annotations", getAnnotations(id));
-
-    return result;
+    return ImmutableMap.of(
+      "text", response.getSourceAsMap().get("body"),
+      "annotations", getAnnotations(id));
   }
 
   private List<Object> getAnnotations(String id) {
@@ -78,8 +76,8 @@ public class ElasticBackend implements Backend {
                                     .setQuery(boolQuery().filter(termQuery("root", id)))
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
-    List<Object> result = new ArrayList<>();
-    response.getHits().forEach(hit -> {
+
+    return Arrays.stream(response.getHits().getHits()).map(hit -> {
       Map<String, Object> map = hit.getSourceAsMap();
       // Move bodies into separate documents?
       map.remove("body");
@@ -89,13 +87,13 @@ public class ElasticBackend implements Backend {
       map.remove("root");
       map.remove("target");
 
+      // Make returned object smaller on the wire.
       if (((Map<?, ?>) map.getOrDefault("attrib", EMPTY_MAP)).isEmpty()) {
         map.remove("attrib");
       }
 
-      result.add(map);
-    });
-    return result;
+      return map;
+    }).collect(Collectors.toList());
   }
 
   @Override
