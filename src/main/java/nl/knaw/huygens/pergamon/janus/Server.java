@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -92,21 +93,44 @@ public class Server extends Application<Server.Config> {
       return Response.status(OK).entity(result).build();
     }
 
+    @Path("/getannotations/{id}")
+    @GET
+    public Response getAnnotations(@PathParam("id") String id, @QueryParam("q") String query) {
+      List<Object> result = backend.getAnnotations(id, query);
+      // TODO distinguish between id not found (404) and no annotations for id (empty list)
+      if (result.isEmpty()) {
+        return Response.status(NOT_FOUND).build();
+      }
+      return Response.status(OK).entity(result).build();
+    }
+
+    @Consumes("application/json")
+    @Path("/annotate/{target}")
+    @POST
+    public Response putAnnotation(@PathParam("target") String target, Annotation ann)
+      throws IOException {
+      return putAnnotation(target, null, ann);
+    }
+
     @Consumes("application/json")
     @Path("/annotate/{target}/{id}")
     @POST
     public Response putAnnotation(@PathParam("target") String target, @PathParam("id") String id, Annotation ann)
       throws IOException {
-      int code = backend.putAnnotation(ann, id, target);
-      return Response.status(code).entity(id).build();
+      Backend.PutResponse result = backend.putAnnotation(ann, id, target);
+      Response.ResponseBuilder response = Response.status(result.status);
+      if (result.status != 404) {
+        response.entity(result.id);
+      }
+      return response.build();
     }
 
     @Path("/putxml/{id}")
     @POST
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
-        int code = backend.putXml(id, parser.build(new StringReader(content)));
-        return Response.status(code).entity(id).build();
+        Backend.PutResponse result = backend.putXml(id, parser.build(new StringReader(content)));
+        return Response.status(result.status).entity(id).build();
       } catch (ParsingException e) {
         return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
       }

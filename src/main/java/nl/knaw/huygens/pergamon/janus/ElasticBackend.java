@@ -8,13 +8,16 @@ import nu.xom.Document;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -27,6 +30,7 @@ import static java.util.Collections.EMPTY_MAP;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
 public class ElasticBackend implements Backend {
@@ -64,18 +68,27 @@ public class ElasticBackend implements Backend {
   public Map<String, Object> getWithAnnotations(String id) throws IOException {
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
     if (!response.isExists()) {
-      return null;
+      response = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, id).get();
+      if (!response.isExists()) {
+        return null;
+      }
     }
 
     return ImmutableMap.of(
       "text", response.getSourceAsMap().get("body"),
-      "annotations", getAnnotations(id));
+      "annotations", getAnnotations(id, null));
   }
 
-  private List<Object> getAnnotations(String id) {
+  @Override
+  public List<Object> getAnnotations(String id, @Nullable String q) {
+    BoolQueryBuilder query = boolQuery().filter(termQuery("root", id));
+    if (q != null) {
+      query.must(queryStringQuery(q));
+    }
+
     SearchResponse response = client.prepareSearch(ANNOTATION_INDEX)
                                     .setTypes(ANNOTATION_TYPE)
-                                    .setQuery(boolQuery().filter(termQuery("root", id)))
+                                    .setQuery(query)
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
@@ -99,39 +112,46 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public int putAnnotation(Annotation ann, String id, String target) throws IOException {
+  public PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException {
     // If there's a document with the id, we annotate that, else the annotation with the id.
     // XXX we need to be smarter, e.g., address the document by index/type/id.
     GetResponse got = client.prepareGet(documentIndex, documentType, target).get();
     String root;
     if (got.isExists()) {
-      root = id;
+      root = target;
     } else {
       got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, target).get();
       if (!got.isExists()) {
-        return 404;
+        return new PutResponse(null, 404);
       }
       root = (String) got.getField("root").getValue();
     }
 
-    IndexResponse response =
-      client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, id)
-            .setOpType(CREATE)
-            .setSource(jsonBuilder()
-              .startObject()
-              .field("start", ann.start)
-              .field("end", ann.end)
-              .field("attrib", ann.attributes)
-              .field("body", ann.type)
-              .field("target", target)
-              .field("root", root)
-              .endObject()
-            ).get();
-    return response.status().getStatus();
+    IndexRequestBuilder request = client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, id);
+    if (id != null) {
+      // the create op explicitly requires an id to be set ... If you want to have
+      // automatic ID generation you need to use the "index" operation.
+      // https://github.com/elastic/elasticsearch/issues/21535#issuecomment-260467699
+      request.setOpType(CREATE);
+    }
+
+    IndexResponse response = request.setSource(
+      jsonBuilder().startObject()
+                   .field("start", ann.start)
+                   .field("end", ann.end)
+                   .field("attrib", ann.attributes)
+                   .field("body", ann.body)
+                   // XXX hard-wire type to something like "user"?
+                   .field("type", ann.type)
+                   .field("target", target)
+                   .field("root", root)
+                   .endObject()
+    ).get();
+    return new PutResponse(response.getId(), response.status().getStatus());
   }
 
   @Override
-  public int putXml(String id, Document document) throws IOException {
+  public PutResponse putXml(String id, Document document) throws IOException {
     TaggedText annotated = new TaggedCodepoints(document);
 
     BulkRequestBuilder bulk = client.prepareBulk();
@@ -169,9 +189,9 @@ public class ElasticBackend implements Backend {
     for (int i = 0; i < response.length; i++) {
       int status = response[i].status().getStatus();
       if (status < 200 || status >= 300) {
-        return status;
+        return new PutResponse(null, 404);
       }
     }
-    return 200;
+    return new PutResponse(id, 200);
   }
 }

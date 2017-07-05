@@ -26,19 +26,15 @@ public class Annotation {
   @JsonProperty
   public final String type;
 
-  @JsonProperty
-  public final String target;
-
   public Annotation() {
-    this(0, 0, "", "", "", "");
+    this(0, 0, "", "", "");
   }
 
-  public Annotation(int start, int end, String body, String tag, String type, String target) {
+  public Annotation(int start, int end, String body, String tag, String type) {
     this.start = start;
     this.end = end;
     this.body = body;
     this.tag = tag;
     this.type = type;
-    this.target = target;
   }
 }
