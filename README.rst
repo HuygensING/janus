@@ -28,7 +28,7 @@ Usage with an Elasticsearch backend
 Start Elasticsearch with the appropriate settings::
 
     cd elasticsearch-setup
-    docker run -p 9200:9200 -p 9300:9300 $(docker build -q)
+    docker run -p 9200:9200 -p 9300:9300 $(docker build -q .)
 
 Add the annotations index (optional but strongly recommended)::
 
