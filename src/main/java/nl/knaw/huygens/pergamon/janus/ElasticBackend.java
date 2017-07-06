@@ -169,8 +169,7 @@ public class ElasticBackend implements Backend {
     BulkRequestBuilder bulk = client.prepareBulk();
     for (int i = 0; i < tags.size(); i++) {
       Tag ann = tags.get(i);
-      bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE, String.format("%s_tag%d", id, i))
-                     .setOpType(CREATE)
+      bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE)
                      .setSource(jsonBuilder()
                        .startObject()
                        .field("start", ann.start)
