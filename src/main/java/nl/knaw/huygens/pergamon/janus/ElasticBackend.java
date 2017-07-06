@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -64,22 +65,29 @@ public class ElasticBackend implements Backend {
 
   @Override
   public Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException {
+    boolean isRoot = true;
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
     if (!response.isExists()) {
       response = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, id).get();
       if (!response.isExists()) {
         return null;
       }
+      isRoot = false;
     }
 
     return ImmutableMap.of(
       "text", response.getSourceAsMap().get("body"),
-      "annotations", getAnnotations(id, null, recursive));
+      "annotations", getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
   }
 
   @Override
   public List<Object> getAnnotations(String id, @Nullable String q, boolean recursive) {
-    BoolQueryBuilder query = boolQuery().filter(termQuery(recursive ? "root" : "target", id));
+    return getAnnotations(id, q, recursive, false, new ArrayList<>());
+  }
+
+  private List<Object> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
+                                      List<Object> result) {
+    BoolQueryBuilder query = boolQuery().filter(termQuery(recursive && isRoot ? "root" : "target", id));
     if (q != null) {
       query.must(queryStringQuery(q));
     }
@@ -90,7 +98,8 @@ public class ElasticBackend implements Backend {
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
-    return Arrays.stream(response.getHits().getHits()).map(hit -> {
+    List<Map<String, Object>> hits = Arrays.stream(response.getHits().getHits()).map(hit -> {
+      String hitId = hit.getId();
       Map<String, Object> map = hit.getSourceAsMap();
       // Move bodies into separate documents?
       map.remove("body");
@@ -105,8 +114,18 @@ public class ElasticBackend implements Backend {
         map.remove("attrib");
       }
 
+      map.put("id", hitId);
       return map;
     }).collect(Collectors.toList());
+    result.addAll(hits);
+
+    // If id is a root (a document), searching for the "root" attribute
+    // that caches its id suffices. Otherwise, we have to query recursively.
+    if (recursive && !isRoot) {
+      hits.forEach(map -> getAnnotations((String) map.get("id"), q, true, false, result));
+    }
+
+    return result;
   }
 
   // prepareIndex + setOpType(CREATE)
