@@ -24,15 +24,21 @@ public interface Backend extends AutoCloseable {
 
   /**
    * Get annotations belong to id, optionally satisfying the query string q.
+   * <p>
+   * If recursive, get annotations on annotations as well.
    */
-  List<Object> getAnnotations(String id, @Nullable String q);
+  List<Object> getAnnotations(String id, @Nullable String q, boolean recursive);
 
   PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException;
 
   /**
+   * Retrieve the document with the given id and its annotations.
+   * <p>
    * Returns null if no document has the given id.
+   * <p>
+   * If recursive, get annotations on annotations as well.
    */
-  Map<String, Object> getWithAnnotations(String id) throws IOException;
+  Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException;
 
   default PutResponse putXml(String id, Document document) throws IOException {
     return putXml(id, new TaggedCodepoints(document));

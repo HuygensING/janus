@@ -63,7 +63,7 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public Map<String, Object> getWithAnnotations(String id) throws IOException {
+  public Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException {
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
     if (!response.isExists()) {
       response = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, id).get();
@@ -74,12 +74,12 @@ public class ElasticBackend implements Backend {
 
     return ImmutableMap.of(
       "text", response.getSourceAsMap().get("body"),
-      "annotations", getAnnotations(id, null));
+      "annotations", getAnnotations(id, null, recursive));
   }
 
   @Override
-  public List<Object> getAnnotations(String id, @Nullable String q) {
-    BoolQueryBuilder query = boolQuery().filter(termQuery("root", id));
+  public List<Object> getAnnotations(String id, @Nullable String q, boolean recursive) {
+    BoolQueryBuilder query = boolQuery().filter(termQuery(recursive ? "root" : "target", id));
     if (q != null) {
       query.must(queryStringQuery(q));
     }
