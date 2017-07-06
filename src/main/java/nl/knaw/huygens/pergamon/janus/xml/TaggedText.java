@@ -44,7 +44,7 @@ public abstract class TaggedText {
   protected abstract int offset();
 
   // Pre-order traversal of t.
-  void traverse(Node node) {
+  private void traverse(Node node) {
     if (node instanceof Text) {
       append(node.getValue());
     } else if (node instanceof Element) {
