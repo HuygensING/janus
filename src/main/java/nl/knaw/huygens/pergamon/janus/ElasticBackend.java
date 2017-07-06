@@ -134,7 +134,7 @@ public class ElasticBackend implements Backend {
       if (!got.isExists()) {
         return new PutResponse(null, 404);
       }
-      root = (String) got.getField("root").getValue();
+      root = (String) got.getSourceAsMap().get("root");
     }
 
     IndexResponse response = prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, id).setSource(
