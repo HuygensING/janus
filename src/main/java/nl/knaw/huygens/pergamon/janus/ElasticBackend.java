@@ -153,6 +153,22 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
+  public PutResponse putTxt(String id, String content) throws IOException {
+    IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
+      jsonBuilder().startObject()
+                   .field("body", content)
+                   .endObject()
+    ).get();
+    int status = response.status().getStatus();
+    if (status < 200 || status >= 300) {
+      id = null;
+    } else {
+      id = response.getId();
+    }
+    return new PutResponse(id, status);
+  }
+
+  @Override
   public PutResponse putXml(String id, TaggedCodepoints document) throws IOException {
     IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
       jsonBuilder().startObject()

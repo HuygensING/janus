@@ -29,8 +29,6 @@ public interface Backend extends AutoCloseable {
    */
   List<Object> getAnnotations(String id, @Nullable String q, boolean recursive);
 
-  PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException;
-
   /**
    * Retrieve the document with the given id and its annotations.
    * <p>
@@ -39,6 +37,10 @@ public interface Backend extends AutoCloseable {
    * If recursive, get annotations on annotations as well.
    */
   Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException;
+
+  PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException;
+
+  PutResponse putTxt(@Nullable String id, String content) throws IOException;
 
   default PutResponse putXml(String id, Document document) throws IOException {
     return putXml(id, new TaggedCodepoints(document));
