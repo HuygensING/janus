@@ -1,6 +1,5 @@
 package nl.knaw.huygens.pergamon.janus;
 
-import com.google.common.collect.ImmutableMap;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -23,6 +22,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -77,9 +77,13 @@ public class ElasticBackend implements Backend {
       isRoot = false;
     }
 
-    return ImmutableMap.of(
-      "text", response.getSourceAsMap().get("body"),
-      "annotations", getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
+    HashMap<String, Object> result = new HashMap<>();
+    result.put("annotations", getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
+    Object text = response.getSourceAsMap().get("body");
+    if (text != null) {
+      result.put("text", text);
+    }
+    return result;
   }
 
   @Override
