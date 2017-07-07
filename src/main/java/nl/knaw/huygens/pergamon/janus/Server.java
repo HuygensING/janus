@@ -135,7 +135,7 @@ public class Server extends Application<Server.Config> {
 
     @Path("/put/{id}")
     @POST
-    private Response putTxt(@PathParam("id") String id, String content) throws IOException {
+    public Response putTxt(@PathParam("id") String id, String content) throws IOException {
       Backend.PutResponse result = backend.putTxt(id, content);
       return Response.status(result.status).entity(result.id).build();
     }
