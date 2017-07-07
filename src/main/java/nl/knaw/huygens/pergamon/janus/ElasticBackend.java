@@ -87,6 +87,9 @@ public class ElasticBackend implements Backend {
     return getAnnotations(id, q, recursive, false, new ArrayList<>());
   }
 
+  // Fields of _source that we want below.
+  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "tag", "type"};
+
   private List<Object> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
                                       List<Object> result) {
     BoolQueryBuilder query = boolQuery().filter(termQuery(recursive && isRoot ? "root" : "target", id));
@@ -97,19 +100,13 @@ public class ElasticBackend implements Backend {
     SearchResponse response = client.prepareSearch(ANNOTATION_INDEX)
                                     .setTypes(ANNOTATION_TYPE)
                                     .setQuery(query)
+                                    .setFetchSource(ANNOTATION_FIELDS, null)
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
     List<Map<String, Object>> hits = Arrays.stream(response.getHits().getHits()).map(hit -> {
       String hitId = hit.getId();
       Map<String, Object> map = hit.getSourceAsMap();
-      // Move bodies into separate documents?
-      map.remove("body");
-
-      // Remove attributes used for internal purposes.
-      map.remove("order");
-      map.remove("root");
-      map.remove("target");
 
       // Make returned object smaller on the wire.
       if (((Map<?, ?>) map.getOrDefault("attrib", EMPTY_MAP)).isEmpty()) {
