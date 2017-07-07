@@ -12,10 +12,12 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
 import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -142,93 +144,105 @@ public class ElasticBackend implements Backend {
 
   @Override
   public PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException {
-    // If there's a document with the id, we annotate that, else the annotation with the id.
-    // XXX we need to be smarter, e.g., address the document by index/type/id.
-    GetResponse got = client.prepareGet(documentIndex, documentType, target).get();
-    String root;
-    if (got.isExists()) {
-      root = target;
-    } else {
-      got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, target).get();
-      if (!got.isExists()) {
-        return new PutResponse(null, 404);
+    try {
+      // If there's a document with the id, we annotate that, else the annotation with the id.
+      // XXX we need to be smarter, e.g., address the document by index/type/id.
+      GetResponse got = client.prepareGet(documentIndex, documentType, target).get();
+      String root;
+      if (got.isExists()) {
+        root = target;
+      } else {
+        got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, target).get();
+        if (!got.isExists()) {
+          return new PutResponse(null, 404);
+        }
+        root = (String) got.getSourceAsMap().get("root");
       }
-      root = (String) got.getSourceAsMap().get("root");
-    }
 
-    IndexResponse response = prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, id).setSource(
-      jsonBuilder().startObject()
-                   .field("start", ann.start)
-                   .field("end", ann.end)
-                   .field("attrib", ann.attributes)
-                   .field("body", ann.body)
-                   // XXX hard-wire type to something like "user"?
-                   .field("type", ann.type)
-                   .field("target", target)
-                   .field("root", root)
-                   .endObject()
-    ).get();
-    return new PutResponse(response.getId(), response.status().getStatus());
+      IndexResponse response = prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, id).setSource(
+        jsonBuilder().startObject()
+                     .field("start", ann.start)
+                     .field("end", ann.end)
+                     .field("attrib", ann.attributes)
+                     .field("body", ann.body)
+                     // XXX hard-wire type to something like "user"?
+                     .field("type", ann.type)
+                     .field("target", target)
+                     .field("root", root)
+                     .endObject()
+      ).get();
+      return new PutResponse(response.getId(), response.status().getStatus());
+    } catch (VersionConflictEngineException e) {
+      return new PutResponse(e.toString(), Response.Status.CONFLICT);
+    }
   }
 
   @Override
   public PutResponse putTxt(String id, String content) throws IOException {
-    IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
-      jsonBuilder().startObject()
-                   .field("body", content)
-                   .endObject()
-    ).get();
-    int status = response.status().getStatus();
-    if (status < 200 || status >= 300) {
-      id = null;
-    } else {
-      id = response.getId();
+    try {
+      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
+        jsonBuilder().startObject()
+                     .field("body", content)
+                     .endObject()
+      ).get();
+      int status = response.status().getStatus();
+      if (status < 200 || status >= 300) {
+        id = null;
+      } else {
+        id = response.getId();
+      }
+      return new PutResponse(id, status);
+    } catch (VersionConflictEngineException e) {
+      return new PutResponse(e.toString(), Response.Status.CONFLICT);
     }
-    return new PutResponse(id, status);
   }
 
   @Override
   public PutResponse putXml(String id, TaggedCodepoints document) throws IOException {
-    IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
-      jsonBuilder().startObject()
-                   .field("body", document.text())
-                   .endObject()
-    ).get();
-    int status = response.status().getStatus();
-    if (status < 200 || status >= 300) {
-      return new PutResponse(null, status);
-    }
-    id = response.getId();
-
-    List<Tag> tags = document.tags();
-    BulkRequestBuilder bulk = client.prepareBulk();
-    for (int i = 0; i < tags.size(); i++) {
-      Tag ann = tags.get(i);
-      bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE)
-                     .setSource(jsonBuilder()
-                       .startObject()
-                       .field("start", ann.start)
-                       .field("end", ann.end)
-                       .field("attrib", ann.attributes)
-                       .field("tag", ann.tag)
-                       .field("type", "tag")
-                       .field("target", id)
-                       .field("root", id)
-                       // The order field is only used to sort, so that we get XML tags back
-                       // in exactly the order they appeared in the original.
-                       // XXX do we need this?
-                       .field("order", i)
-                       .endObject()
-                     ));
-    }
-
-    BulkItemResponse[] items = bulk.get().getItems();
-    for (BulkItemResponse item : items) {
-      status = item.status().getStatus();
+    try {
+      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
+        jsonBuilder().startObject()
+                     .field("body", document.text())
+                     .endObject()
+      ).get();
+      int status = response.status().getStatus();
       if (status < 200 || status >= 300) {
-        return new PutResponse(id, status);
+        return new PutResponse(null, status);
       }
+      id = response.getId();
+
+      List<Tag> tags = document.tags();
+      BulkRequestBuilder bulk = client.prepareBulk();
+      for (int i = 0; i < tags.size(); i++) {
+        Tag ann = tags.get(i);
+        bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE)
+                       .setSource(jsonBuilder()
+                         .startObject()
+                         .field("start", ann.start)
+                         .field("end", ann.end)
+                         .field("attrib", ann.attributes)
+                         .field("tag", ann.tag)
+                         .field("type", "tag")
+                         .field("target", id)
+                         .field("root", id)
+                         // The order field is only used to sort, so that we get XML tags back
+                         // in exactly the order they appeared in the original.
+                         // XXX do we need this?
+                         .field("order", i)
+                         .endObject()
+                       ));
+      }
+
+      BulkItemResponse[] items = bulk.get().getItems();
+      for (BulkItemResponse item : items) {
+        status = item.status().getStatus();
+        if (status < 200 || status >= 300) {
+          return new PutResponse(id, status);
+        }
+      }
+      return new PutResponse(id, 200);
+    } catch (VersionConflictEngineException e) {
+      return new PutResponse(e.toString(), Response.Status.CONFLICT);
     }
-    return new PutResponse(id, 200);
   }
 }

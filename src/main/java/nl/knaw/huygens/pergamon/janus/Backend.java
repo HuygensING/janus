@@ -4,6 +4,7 @@ import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nu.xom.Document;
 
 import javax.annotation.Nullable;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,10 @@ public interface Backend extends AutoCloseable {
     PutResponse(String id, int status) {
       this.id = id;
       this.status = status;
+    }
+
+    PutResponse(String id, Response.Status status) {
+      this(id, status.getStatusCode());
     }
   }
 
