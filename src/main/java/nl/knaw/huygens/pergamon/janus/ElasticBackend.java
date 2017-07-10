@@ -92,7 +92,7 @@ public class ElasticBackend implements Backend {
   }
 
   // Fields of _source that we want below.
-  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "tag", "type"};
+  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "tag", "type", "target"};
 
   private List<Object> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
                                       List<Object> result) {
