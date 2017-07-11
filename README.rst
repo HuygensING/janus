@@ -109,8 +109,8 @@ anything. Useful for debugging. Output is a JSON structure of the form::
 
     {"text": string, "annotations": [annotation*]}
 
-except that the ``id`` and ``type`` fields are missing in the annotations
-(since nothing is stored, no ids are generated, and the type is always XML tag).
+except that the ``type`` field is missing in the annotations (the type is
+always XML tag). The identifiers are randomly generated.
 
 
 Example: bulk indexing

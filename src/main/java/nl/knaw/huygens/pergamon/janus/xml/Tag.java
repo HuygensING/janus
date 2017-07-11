@@ -13,6 +13,9 @@ public class Tag {
   public final Map<String, String> attributes = new TreeMap<>();
 
   @JsonProperty
+  public final String id;
+
+  @JsonProperty
   public final int start;
 
   @JsonProperty
@@ -21,13 +24,14 @@ public class Tag {
   @JsonProperty
   public final String tag;
 
-  public Tag() {
-    this("", 0, 0);
-  }
+  @JsonProperty
+  public final String target;
 
-  public Tag(String tag, int start, int end) {
+  public Tag(String id, String tag, int start, int end, String target) {
+    this.id = id;
     this.tag = tag;
     this.end = end;
     this.start = start;
+    this.target = target;
   }
 }
