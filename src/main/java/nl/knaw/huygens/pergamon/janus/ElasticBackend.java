@@ -144,7 +144,7 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResponse putAnnotation(Annotation ann, String id) throws IOException {
+  public PutResult putAnnotation(Annotation ann, String id) throws IOException {
     try {
       // If there's a document with the id, we annotate that, else the annotation with the id.
       // XXX we need to be smarter, e.g., address the document by index/type/id.
@@ -155,7 +155,7 @@ public class ElasticBackend implements Backend {
       } else {
         got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, ann.target).get();
         if (!got.isExists()) {
-          return new PutResponse(null, 404);
+          return new PutResult(null, 404);
         }
         root = (String) got.getSourceAsMap().get("root");
       }
@@ -172,14 +172,14 @@ public class ElasticBackend implements Backend {
                      .field("root", root)
                      .endObject()
       ).get();
-      return new PutResponse(response.getId(), response.status().getStatus());
+      return new PutResult(response.getId(), response.status().getStatus());
     } catch (VersionConflictEngineException e) {
-      return new PutResponse(e.toString(), Response.Status.CONFLICT);
+      return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
   }
 
   @Override
-  public PutResponse putTxt(String id, String content) throws IOException {
+  public PutResult putTxt(String id, String content) throws IOException {
     try {
       IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
         jsonBuilder().startObject()
@@ -192,14 +192,14 @@ public class ElasticBackend implements Backend {
       } else {
         id = response.getId();
       }
-      return new PutResponse(id, status);
+      return new PutResult(id, status);
     } catch (VersionConflictEngineException e) {
-      return new PutResponse(e.toString(), Response.Status.CONFLICT);
+      return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
   }
 
   @Override
-  public PutResponse putXml(String docId, TaggedCodepoints document) throws IOException {
+  public PutResult putXml(String docId, TaggedCodepoints document) throws IOException {
     try {
       IndexResponse response = prepareCreate(documentIndex, documentType, docId).setSource(
         jsonBuilder().startObject()
@@ -208,7 +208,7 @@ public class ElasticBackend implements Backend {
       ).get();
       int status = response.status().getStatus();
       if (status < 200 || status >= 300) {
-        return new PutResponse(null, status);
+        return new PutResult(null, status);
       }
       docId = response.getId();
 
@@ -238,12 +238,12 @@ public class ElasticBackend implements Backend {
       for (BulkItemResponse item : items) {
         status = item.status().getStatus();
         if (status < 200 || status >= 300) {
-          return new PutResponse(docId, status);
+          return new PutResult(docId, status);
         }
       }
-      return new PutResponse(docId, 200);
+      return new PutResult(docId, 200);
     } catch (VersionConflictEngineException e) {
-      return new PutResponse(e.toString(), Response.Status.CONFLICT);
+      return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
   }
 }

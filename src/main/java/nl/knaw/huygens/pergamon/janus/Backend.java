@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface Backend extends AutoCloseable {
-  class PutResponse {
+  class PutResult {
     // Id of document or annotation that was created.
     @JsonProperty
     public final String id;
@@ -20,13 +20,17 @@ public interface Backend extends AutoCloseable {
     @JsonProperty
     public final int status;
 
-    PutResponse(String id, int status) {
+    PutResult(String id, int status) {
       this.id = id;
       this.status = status;
     }
 
-    PutResponse(String id, Response.Status status) {
+    PutResult(String id, Response.Status status) {
       this(id, status.getStatusCode());
+    }
+
+    public Response asResponse() {
+      return Response.status(status).entity(this).build();
     }
   }
 
@@ -46,13 +50,13 @@ public interface Backend extends AutoCloseable {
    */
   Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException;
 
-  PutResponse putAnnotation(Annotation ann, String id) throws IOException;
+  PutResult putAnnotation(Annotation ann, String id) throws IOException;
 
-  PutResponse putTxt(@Nullable String id, String content) throws IOException;
+  PutResult putTxt(@Nullable String id, String content) throws IOException;
 
-  default PutResponse putXml(String id, Document document) throws IOException {
+  default PutResult putXml(String id, Document document) throws IOException {
     return putXml(id, new TaggedCodepoints(document));
   }
 
-  PutResponse putXml(String id, TaggedCodepoints document) throws IOException;
+  PutResult putXml(String id, TaggedCodepoints document) throws IOException;
 }
