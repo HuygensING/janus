@@ -12,12 +12,7 @@ import static org.junit.Assert.assertEquals;
 
 public abstract class TestTaggedText {
   private void test(String xml, String text, Tag... reference) {
-    TaggedText result;
-    try {
-      result = parse(new nu.xom.Builder().build(new ByteArrayInputStream(xml.getBytes())));
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    TaggedText result = parse(xml);
 
     assertEquals(text, result.text());
 
@@ -41,6 +36,14 @@ public abstract class TestTaggedText {
         assertEquals(attrx.getKey(), attry.getKey());
         assertEquals(attrx.getValue(), attry.getValue());
       }
+    }
+  }
+
+  TaggedText parse(String xml) {
+    try {
+      return parse(new nu.xom.Builder().build(new ByteArrayInputStream(xml.getBytes())));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
