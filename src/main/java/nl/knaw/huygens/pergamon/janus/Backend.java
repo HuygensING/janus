@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nu.xom.Document;
 
@@ -12,9 +13,11 @@ import java.util.Map;
 public interface Backend extends AutoCloseable {
   class PutResponse {
     // Id of document or annotation that was created.
+    @JsonProperty
     public final String id;
 
     // HTTP status.
+    @JsonProperty
     public final int status;
 
     PutResponse(String id, int status) {

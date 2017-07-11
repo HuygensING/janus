@@ -160,9 +160,7 @@ public class Server extends Application<Server.Config> {
       throws IOException {
       Backend.PutResponse result = backend.putAnnotation(ann, id);
       Response.ResponseBuilder response = Response.status(result.status);
-      if (result.status != 404) {
-        response.entity(result.id);
-      }
+      response.entity(result);
       return response.build();
     }
 
@@ -176,7 +174,7 @@ public class Server extends Application<Server.Config> {
     @POST
     public Response putTxt(@PathParam("id") String id, String content) throws IOException {
       Backend.PutResponse result = backend.putTxt(id, content);
-      return Response.status(result.status).entity(result.id).build();
+      return Response.status(result.status).entity(result).build();
     }
 
     @Path("/putxml")
@@ -190,7 +188,7 @@ public class Server extends Application<Server.Config> {
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
         Backend.PutResponse result = backend.putXml(id, parser.build(new StringReader(content)));
-        return Response.status(result.status).entity(result.id).build();
+        return Response.status(result.status).entity(result).build();
       } catch (ParsingException e) {
         return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
       }
