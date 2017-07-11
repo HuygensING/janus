@@ -3,7 +3,19 @@ package nl.knaw.huygens.pergamon.janus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Application;
 import io.dropwizard.Configuration;
+import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.federecio.dropwizard.swagger.SwaggerBundle;
+import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.Contact;
+import io.swagger.annotations.Info;
+import io.swagger.annotations.License;
+import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedBytes;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
@@ -37,6 +49,24 @@ import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
 /**
  * Web server.
  */
+@SwaggerDefinition(
+  info = @Info(
+    description = "Operations on texts and annotations",
+    version = "1.0",
+    title = "Janus: Pergamon's API face",
+    termsOfService = "http://example.com/to-be-determined.html",
+    contact = @Contact(
+      name = "Developers",
+      email = "janus@example.com",
+      url = "http://pergamon.huygens.knaw.nl"
+    ),
+    license = @License(
+      name = "GNU GENERAL PUBLIC LICENSE",
+      url = "https://www.gnu.org/licenses/licenses.en.html#GPL"
+    )
+  ),
+  schemes = {SwaggerDefinition.Scheme.HTTP, SwaggerDefinition.Scheme.HTTPS}
+)
 public class Server extends Application<Server.Config> {
   public static class Config extends Configuration {
     @JsonProperty
@@ -46,6 +76,9 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private String documentType;
+
+    @JsonProperty("swagger")
+    private SwaggerBundleConfiguration swaggerBundleConfiguration;
   }
 
   private enum OffsetType {
@@ -73,7 +106,8 @@ public class Server extends Application<Server.Config> {
     }
   }
 
-  @Path("/")
+  @Api(value = "janus")
+  @Path("/documents")
   @Produces(MediaType.APPLICATION_JSON)
   public static class Resource {
     private final Backend backend;
@@ -83,9 +117,14 @@ public class Server extends Application<Server.Config> {
       backend = new ElasticBackend(config.documentIndex, config.documentType);
     }
 
-    @Path("/get/{id}")
     @GET
-    public Response get(@PathParam("id") String id) throws IOException {
+    @Path("{id}")
+    @ApiOperation(value = "Gets a document and its annotations by id",
+      response = Annotation.class)
+    @ApiResponses(value = {
+      @ApiResponse(code = 404, message = "Document not found")
+    })
+    public Response get(@ApiParam(value = "document ID") @PathParam("id") String id) throws IOException {
       Map<String, Object> result = backend.getWithAnnotations(id, true);
       if (result == null) {
         return Response.status(NOT_FOUND).build();
@@ -93,8 +132,8 @@ public class Server extends Application<Server.Config> {
       return Response.status(OK).entity(result).build();
     }
 
-    @Path("/getannotations/{id}")
     @GET
+    @Path("{id}/annotations")
     public Response getAnnotations(@PathParam("id") String id,
                                    @QueryParam("recursive") @DefaultValue("true") boolean recursive,
                                    @QueryParam("q") String query) {
@@ -106,9 +145,9 @@ public class Server extends Application<Server.Config> {
       return Response.status(OK).entity(result).build();
     }
 
-    @Consumes("application/json")
-    @Path("/annotate")
     @POST
+    @Path("/annotate")
+    @Consumes("application/json")
     public Response putAnnotation(Annotation ann)
       throws IOException {
       return putAnnotation(null, ann);
@@ -168,6 +207,16 @@ public class Server extends Application<Server.Config> {
 
   public static void main(String[] args) throws Exception {
     new Server().run(args);
+  }
+
+  @Override
+  public void initialize(Bootstrap<Config> bootstrap) {
+    bootstrap.addBundle(new SwaggerBundle<Config>() {
+      @Override
+      protected SwaggerBundleConfiguration getSwaggerBundleConfiguration(Config config) {
+        return config.swaggerBundleConfiguration;
+      }
+    });
   }
 
   @Override
