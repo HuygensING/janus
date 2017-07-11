@@ -144,16 +144,16 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException {
+  public PutResponse putAnnotation(Annotation ann, String id) throws IOException {
     try {
       // If there's a document with the id, we annotate that, else the annotation with the id.
       // XXX we need to be smarter, e.g., address the document by index/type/id.
-      GetResponse got = client.prepareGet(documentIndex, documentType, target).get();
+      GetResponse got = client.prepareGet(documentIndex, documentType, ann.target).get();
       String root;
       if (got.isExists()) {
-        root = target;
+        root = ann.target;
       } else {
-        got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, target).get();
+        got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, ann.target).get();
         if (!got.isExists()) {
           return new PutResponse(null, 404);
         }
@@ -168,7 +168,7 @@ public class ElasticBackend implements Backend {
                      .field("body", ann.body)
                      // XXX hard-wire type to something like "user"?
                      .field("type", ann.type)
-                     .field("target", target)
+                     .field("target", ann.target)
                      .field("root", root)
                      .endObject()
       ).get();

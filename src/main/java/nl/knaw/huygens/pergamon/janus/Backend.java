@@ -43,7 +43,7 @@ public interface Backend extends AutoCloseable {
    */
   Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException;
 
-  PutResponse putAnnotation(Annotation ann, String id, String target) throws IOException;
+  PutResponse putAnnotation(Annotation ann, String id) throws IOException;
 
   PutResponse putTxt(@Nullable String id, String content) throws IOException;
 

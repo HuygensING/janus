@@ -107,10 +107,10 @@ POST /transform
 Performs the XML transformation that ``/putxml`` performs, without storing
 anything. Useful for debugging. Output is a JSON structure of the form::
 
-    {"text": string, "annotations": [annotation*]}
+    {"text": string, "tags": [annotation*]}
 
-except that the ``type`` field is missing in the annotations (the type is
-always XML tag). The identifiers are randomly generated.
+The ``type`` of each annotation is ``tag``. The identifiers are randomly
+generated.
 
 
 Example: bulk indexing

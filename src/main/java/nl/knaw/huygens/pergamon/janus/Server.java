@@ -107,19 +107,19 @@ public class Server extends Application<Server.Config> {
     }
 
     @Consumes("application/json")
-    @Path("/annotate/{target}")
+    @Path("/annotate")
     @POST
-    public Response putAnnotation(@PathParam("target") String target, Annotation ann)
+    public Response putAnnotation(Annotation ann)
       throws IOException {
-      return putAnnotation(target, null, ann);
+      return putAnnotation(null, ann);
     }
 
     @Consumes("application/json")
-    @Path("/annotate/{target}/{id}")
+    @Path("/annotate/{id}")
     @POST
-    public Response putAnnotation(@PathParam("target") String target, @PathParam("id") String id, Annotation ann)
+    public Response putAnnotation(@PathParam("id") String id, Annotation ann)
       throws IOException {
-      Backend.PutResponse result = backend.putAnnotation(ann, id, target);
+      Backend.PutResponse result = backend.putAnnotation(ann, id);
       Response.ResponseBuilder response = Response.status(result.status);
       if (result.status != 404) {
         response.entity(result.id);

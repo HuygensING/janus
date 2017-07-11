@@ -1,37 +1,17 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.Map;
-import java.util.TreeMap;
+import nl.knaw.huygens.pergamon.janus.Annotation;
 
 /**
- * A Tag represents an XML tag, one of the types of annotations that we support.
+ * A Tag represents an XML element, one of the types of annotations that we support.
  */
-public class Tag {
-  @JsonProperty
-  public final Map<String, String> attributes = new TreeMap<>();
-
+public class Tag extends Annotation {
   @JsonProperty
   public final String id;
 
-  @JsonProperty
-  public final int start;
-
-  @JsonProperty
-  public final int end;
-
-  @JsonProperty
-  public final String tag;
-
-  @JsonProperty
-  public final String target;
-
   public Tag(String id, String tag, int start, int end, String target) {
+    super(start, end, target, tag, "", "tag");
     this.id = id;
-    this.tag = tag;
-    this.end = end;
-    this.start = start;
-    this.target = target;
   }
 }

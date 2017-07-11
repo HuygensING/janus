@@ -23,16 +23,23 @@ public class Annotation {
   @JsonProperty
   public final String tag;
 
+  /**
+   * id of annotated document or annotation.
+   */
+  @JsonProperty
+  public final String target;
+
   @JsonProperty
   public final String type;
 
   public Annotation() {
-    this(0, 0, "", "", "");
+    this(0, 0, "", "", "", "");
   }
 
-  public Annotation(int start, int end, String body, String tag, String type) {
+  public Annotation(int start, int end, String target, String tag, String body, String type) {
     this.start = start;
     this.end = end;
+    this.target = target;
     this.body = body;
     this.tag = tag;
     this.type = type;
