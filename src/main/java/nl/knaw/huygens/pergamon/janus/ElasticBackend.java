@@ -199,9 +199,9 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResponse putXml(String id, TaggedCodepoints document) throws IOException {
+  public PutResponse putXml(String docId, TaggedCodepoints document) throws IOException {
     try {
-      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
+      IndexResponse response = prepareCreate(documentIndex, documentType, docId).setSource(
         jsonBuilder().startObject()
                      .field("body", document.text())
                      .endObject()
@@ -210,38 +210,38 @@ public class ElasticBackend implements Backend {
       if (status < 200 || status >= 300) {
         return new PutResponse(null, status);
       }
-      id = response.getId();
+      docId = response.getId();
 
       List<Tag> tags = document.tags();
       BulkRequestBuilder bulk = client.prepareBulk();
       for (int i = 0; i < tags.size(); i++) {
         Tag ann = tags.get(i);
-        bulk.add(client.prepareIndex(ANNOTATION_INDEX, ANNOTATION_TYPE)
-                       .setSource(jsonBuilder()
-                         .startObject()
-                         .field("start", ann.start)
-                         .field("end", ann.end)
-                         .field("attrib", ann.attributes)
-                         .field("tag", ann.tag)
-                         .field("type", "tag")
-                         .field("target", id)
-                         .field("root", id)
-                         // The order field is only used to sort, so that we get XML tags back
-                         // in exactly the order they appeared in the original.
-                         // XXX do we need this?
-                         .field("order", i)
-                         .endObject()
-                       ));
+        bulk.add(prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, ann.id)
+          .setSource(jsonBuilder()
+            .startObject()
+            .field("start", ann.start)
+            .field("end", ann.end)
+            .field("attrib", ann.attributes)
+            .field("tag", ann.tag)
+            .field("type", "tag")
+            .field("target", ann.target)
+            .field("root", docId)
+            // The order field is only used to sort, so that we get XML tags back
+            // in exactly the order they appeared in the original.
+            // XXX do we need this?
+            .field("order", i)
+            .endObject()
+          ));
       }
 
       BulkItemResponse[] items = bulk.get().getItems();
       for (BulkItemResponse item : items) {
         status = item.status().getStatus();
         if (status < 200 || status >= 300) {
-          return new PutResponse(id, status);
+          return new PutResponse(docId, status);
         }
       }
-      return new PutResponse(id, 200);
+      return new PutResponse(docId, 200);
     } catch (VersionConflictEngineException e) {
       return new PutResponse(e.toString(), Response.Status.CONFLICT);
     }
