@@ -17,7 +17,7 @@ public class Annotation {
   @JsonProperty
   public final int end;
 
-  @JsonProperty
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
   public final String body;
 
   @JsonProperty
