@@ -82,76 +82,8 @@ its contents being the document ``note-1``.
 REST API
 --------
 
-**Outdated**. Generated API docs at http://localhost:8080/swagger/ are WIP.
-
-GET /get/{id}
-
-Get the document with the given id and all its annotations.
-Returns JSON of the form::
-
-    {"text": string, "annotations": [annotation*]}
-
-where an annotation is a structure of the form::
-
-    {"start": integer,
-     "end": integer,
-     "attrib": map of string to string,
-     "tag": string,
-     "type": string,
-     "target": string}
-
-GET /getannotations/{id}?recursive={bool}
-
-Gets the annotations for the document with the given id.
-Recursive is optional and defaults to true, which means that annotations
-on annotations are returned in one long list.
-Returns JSON of the form::
-
-    [annotation*]
-
-POST /annotate/{target}/{id}
-
-Post an annotation on the document or annotation with the {target} id.
-The {id} is that of the new annotation and is optional: an id will be
-generated if none is given. Returns the id of the new annotion.
-If the id is already in use, an HTTP error 409 is returned.
-
-The payload must be a JSON-encoded structure of the form::
-
-    {"start": integer,
-     "end": integer,
-     "body": string,
-     "attrib": map of string to string,
-     "tag": string,
-     "type": string}
-
-POST /put/{id}
-
-Post a document with the given {id}. The {id} is optional: an id will be
-generated if none is given. Returns the id of the new document.
-If the id is already in use, an HTTP error 409 is returned.
-
-The payload must be a string.
-
-POST /putxml/{id}
-
-Post a document with the given {id}. The {id} is optional: an id will be
-generated if none is given. Returns the id of the new document.
-If the id is already in use, an HTTP error 409 is returned.
-
-The payload must be an XML-encoded string. The text is stored as the document,
-while the tags become annotations on this document, each with
-``"type": "tag"``.
-
-POST /transform
-
-Performs the XML transformation that ``/putxml`` performs, without storing
-anything. Useful for debugging. Output is a JSON structure of the form::
-
-    {"text": string, "tags": [annotation*]}
-
-The ``type`` of each annotation is ``tag``. The identifiers are randomly
-generated.
+Janus communicates to the outside world using a web API.
+For documentation, fire up Janus and visit http://localhost:8080/swagger/.
 
 
 Example: bulk indexing
