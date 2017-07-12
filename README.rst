@@ -91,8 +91,9 @@ Example: bulk indexing
 To upload XML files in bulk for indexing, use something like::
 
     find some_dir -name '*.xml' -print0 |
-        xargs -0 -n 1 sh -c '
-            curl -s -XPOST http://localhost:8080/putxml/$(uuidgen) -d @$0
+        xargs -0 -n 1 -P $(nproc) sh -c '
+            curl -s -XPOST http://localhost:8080/documents/putxml/$(uuidgen) \
+                -d @$0
             echo " " $0
         '
 
