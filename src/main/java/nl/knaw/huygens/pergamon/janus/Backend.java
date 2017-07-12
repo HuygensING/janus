@@ -55,8 +55,8 @@ public interface Backend extends AutoCloseable {
   PutResult putTxt(@Nullable String id, String content) throws IOException;
 
   default PutResult putXml(String id, Document document) throws IOException {
-    return putXml(id, new TaggedCodepoints(document));
+    return putXml(new TaggedCodepoints(document));
   }
 
-  PutResult putXml(String id, TaggedCodepoints document) throws IOException;
+  PutResult putXml(TaggedCodepoints document) throws IOException;
 }

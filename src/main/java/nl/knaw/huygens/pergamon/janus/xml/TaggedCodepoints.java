@@ -19,8 +19,8 @@ public class TaggedCodepoints extends TaggedText {
     super(doc);
   }
 
-  public TaggedCodepoints(String text, List<Tag> tags) {
-    super(text, tags);
+  public TaggedCodepoints(String text, String docId, List<Tag> tags) {
+    super(text, docId, tags);
     int length = text.codePointCount(0, sb.length());
     // TODO check if tags are sorted
     for (Tag tag : tags) {
@@ -47,7 +47,7 @@ public class TaggedCodepoints extends TaggedText {
    * Reconstruct XML document from text and list of tags.
    */
   public Document reconstruct() {
-    return new Document(reconstruct(tags.get(0), 0, tags.stream().collect(groupingBy(t -> t.target))));
+    return new Document(reconstruct(tags.get(0), 0, tags.stream().collect(groupingBy(t -> t.xmlParent))));
   }
 
   private Element reconstruct(Tag root, int textIndex, Map<String, List<Tag>> childrenOf) {
