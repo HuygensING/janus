@@ -62,6 +62,7 @@ different document. An annotation without a body can be thought of as a
 highlighted portion of text. The annotation
 
 ::
+
     {"begin": 0, "end": 4, "target": "draft-paper", "type": "user",
      "tag": "green"}
 
@@ -69,6 +70,7 @@ might indicate that the user used a green highlighter on the first four
 characters (Unicode codepoints) of the document ``draft-paper``. By contrast,
 
 ::
+
     {"begin": 4, "end": 10, "target": "draft-paper", "type": "user",
      "tag": "yellow", "body": "note-1"}
 
