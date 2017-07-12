@@ -70,6 +70,9 @@ import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
 public class Server extends Application<Server.Config> {
   public static class Config extends Configuration {
     @JsonProperty
+    private String host = "localhost";
+
+    @JsonProperty
     @NotEmpty
     private String documentIndex;
 
@@ -114,7 +117,7 @@ public class Server extends Application<Server.Config> {
     private static final Builder parser = new Builder();
 
     public Resource(Config config) throws UnknownHostException {
-      backend = new ElasticBackend(config.documentIndex, config.documentType);
+      backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
     }
 
     @GET

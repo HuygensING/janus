@@ -15,6 +15,8 @@ RUN cd /build \
  && rm -rf /build
 
 COPY janus.yml .
+COPY annotation-mapping.json .
+COPY put_index.sh .
 
 EXPOSE 8080 8081
 

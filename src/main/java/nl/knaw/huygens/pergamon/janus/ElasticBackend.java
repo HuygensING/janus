@@ -49,13 +49,13 @@ public class ElasticBackend implements Backend {
    * @param documentType  Name of the document type.
    * @throws UnknownHostException
    */
-  public ElasticBackend(String documentIndex, String documentType) throws UnknownHostException {
+  public ElasticBackend(String host, String documentIndex, String documentType) throws UnknownHostException {
     if (ANNOTATION_INDEX.equals(documentIndex) && ANNOTATION_TYPE.equals(documentType)) {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
     }
 
     client = new PreBuiltTransportClient(Settings.EMPTY)
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300));
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), 9300));
     this.documentIndex = documentIndex;
     this.documentType = documentType;
   }
