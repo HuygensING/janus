@@ -86,6 +86,26 @@ Janus communicates to the outside world using a web API.
 For documentation, fire up Janus and visit http://localhost:8080/swagger/.
 
 
+Special support for XML
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Janus has special support for XML documents, which are parsed and turned into
+a flat text document and one annotation per XML element by the ``putxml``
+endpoint.
+
+The text document corresponds to the text in between the tags; in XPath
+terminology, it's the ``string()`` of the whole document. Each element is
+turned into an annotation with the following properties:
+
+* The ``type`` of the annotation is ``"tag"``.
+* The ``tag`` is its XML tag name.
+* The ``target`` is the document's id.
+* The ``start`` and ``end`` denote where the start and end tags where found
+  in the text document.
+* The attributes of the tag are stored in the ``"attrib"`` field, as strings.
+* The ``body`` is empty (null).
+
+
 Example: bulk indexing
 ~~~~~~~~~~~~~~~~~~~~~~
 To upload XML files in bulk for indexing, use something like::
