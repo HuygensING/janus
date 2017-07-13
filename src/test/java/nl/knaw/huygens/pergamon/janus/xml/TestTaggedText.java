@@ -3,9 +3,7 @@ package nl.knaw.huygens.pergamon.janus.xml;
 import nu.xom.Document;
 import org.junit.Test;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -26,15 +24,7 @@ public abstract class TestTaggedText {
       assertEquals(x.start, y.start);
       assertEquals(x.end, y.end);
 
-      Iterator<Map.Entry<String, String>> iterx = x.attributes.entrySet().iterator();
-      Iterator<Map.Entry<String, String>> itery = y.attributes.entrySet().iterator();
-
-      while (iterx.hasNext()) {
-        Map.Entry<String, String> attrx = iterx.next();
-        Map.Entry<String, String> attry = itery.next();
-        assertEquals(attrx.getKey(), attry.getKey());
-        assertEquals(attrx.getValue(), attry.getValue());
-      }
+      assertEquals(x.attributes, y.attributes);
     }
   }
 
@@ -79,6 +69,20 @@ public abstract class TestTaggedText {
     test("<tricky>𝄠<a/></tricky>", "𝄠",
       tag("tricky", 0, 4, 0, 2, 0, 1),
       tag("a", 4, 4, 2, 2, 1, 1));
+  }
+
+  @Test
+  public void namespaces() {
+    test("<foo:x xmlns:foo='http://example.com/foo'><bar:y xmlns:bar='http://example.com/bar'/><baz/></foo:x>", "",
+      tag("foo:x", 0, 0, 0, 0, 0, 0, "xmlns:foo", "http://example.com/foo"),
+      tag("bar:y", 0, 0, 0, 0, 0, 0, "xmlns:bar", "http://example.com/bar"),
+      tag("baz", 0, 0, 0, 0, 0, 0));
+
+    test("<x xmlns='http://example.com/bla'><y/><z xmlns='http://z'><z2/></z></x>", "",
+      tag("x", 0, 0, 0, 0, 0, 0, "xmlns", "http://example.com/bla"),
+      tag("y", 0, 0, 0, 0, 0, 0, "xmlns", "http://example.com/bla"),
+      tag("z", 0, 0, 0, 0, 0, 0, "xmlns", "http://z"),
+      tag("z2", 0, 0, 0, 0, 0, 0, "xmlns", "http://z"));
   }
 
   @Test

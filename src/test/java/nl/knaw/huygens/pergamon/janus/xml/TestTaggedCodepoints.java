@@ -37,5 +37,8 @@ public class TestTaggedCodepoints extends TestTaggedText {
     // Whitespace will be normalized, attributes sorted.
     test("<p   x=\"who?\" b=\"bla\"  z=\"foo\"  a=\"what?\"/>",
       "<p a=\"what?\" b=\"bla\" x=\"who?\" z=\"foo\" />");
+
+    // XML namespaces should come out right.
+    test("<x><y xmlns=\"http://y\"><y2 /><z:z xmlns:z=\"http://z\" /></y></x>");
   }
 }

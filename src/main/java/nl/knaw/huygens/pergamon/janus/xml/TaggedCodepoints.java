@@ -67,8 +67,13 @@ public class TaggedCodepoints extends TaggedText {
 
     private Element apply(Tag root) {
       // Children are sorted by start.
-      Element elem = new Element(root.type);
-      root.attributes.forEach((k, v) -> elem.addAttribute(new Attribute(k, v)));
+      Element elem = mkElem(root);
+
+      root.attributes.forEach((k, v) -> {
+        if (!k.equals("xmlns") && !k.startsWith("xmlns:")) {
+          elem.addAttribute(new Attribute(k, v));
+        }
+      });
 
       for (Tag child : children.getOrDefault(root.id, emptyList())) {
         if (child.start > sbIndex) {
@@ -89,5 +94,19 @@ public class TaggedCodepoints extends TaggedText {
 
       return elem;
     }
+  }
+
+  private static Element mkElem(Tag tag) {
+    String name = tag.type;
+    int colon = name.indexOf(':');
+    if (colon == -1) {
+      String ns = tag.attributes.get("xmlns");
+      if (ns != null) {
+        return new Element(name, ns);
+      }
+      return new Element(name);
+    }
+    String prefix = name.substring(0, colon);
+    return new Element(name, tag.attributes.get("xmlns:" + prefix));
   }
 }

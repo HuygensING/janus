@@ -81,13 +81,24 @@ public abstract class TaggedText {
       if (parentId == null) {
         throw new NullPointerException("null parent id");
       }
-      Tag tag = new Tag(id, ((Element) node).getQualifiedName(), base, offset(), docId, parentId);
+      Element elem = (Element) node;
+      Tag tag = new Tag(id, elem.getQualifiedName(), base, offset(), docId, parentId);
       tags.set(insert, tag);
-      range(0, ((Element) node).getAttributeCount())
+      range(0, elem.getAttributeCount())
         .forEach(i -> {
-          Attribute attr = ((Element) node).getAttribute(i);
+          Attribute attr = elem.getAttribute(i);
           tag.attributes.put(attr.getQualifiedName(), attr.getValue());
         });
+
+      String uri = elem.getNamespaceURI();
+      if (!"".equals(uri)) {
+        String prefix = elem.getNamespacePrefix();
+        if (!"".equals(prefix)) {
+          tag.attributes.put("xmlns:" + prefix, uri);
+        } else {
+          tag.attributes.put("xmlns", uri);
+        }
+      }
     }
   }
 }
