@@ -199,8 +199,10 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResult putXml(String docId, TaggedCodepoints document) throws IOException {
+  public PutResult putXml(TaggedCodepoints document) throws IOException {
+    // TODO: handle partial failures better.
     try {
+      String docId = document.docId;
       IndexResponse response = prepareCreate(documentIndex, documentType, docId).setSource(
         jsonBuilder().startObject()
                      .field("body", document.text())
@@ -210,7 +212,6 @@ public class ElasticBackend implements Backend {
       if (status < 200 || status >= 300) {
         return new PutResult(null, status);
       }
-      docId = response.getId();
 
       List<Tag> tags = document.tags();
       BulkRequestBuilder bulk = client.prepareBulk();
@@ -230,6 +231,7 @@ public class ElasticBackend implements Backend {
             // in exactly the order they appeared in the original.
             // XXX do we need this?
             .field("order", i)
+            .field("xmlParent", ann.xmlParent)
             .endObject()
           ));
       }

@@ -19,6 +19,7 @@ import static java.util.stream.IntStream.range;
  * Base class for XML-to-text-with-tags converters.
  */
 public abstract class TaggedText {
+  public final String docId;
   private final HashMap<Node, String> nodeId = new HashMap<>();
   protected final List<Tag> tags;
   protected final StringBuilder sb;
@@ -28,13 +29,15 @@ public abstract class TaggedText {
   }
 
   TaggedText(Document doc, String docId) {
+    this.docId = docId;
     tags = new ArrayList<>();
     sb = new StringBuilder();
     nodeId.put(doc, docId);
     traverse(doc.getRootElement());
   }
 
-  TaggedText(String text, List<Tag> tags) {
+  TaggedText(String text, String docId, List<Tag> tags) {
+    this.docId = docId;
     sb = new StringBuilder(text);
     this.tags = tags;
   }
@@ -75,7 +78,7 @@ public abstract class TaggedText {
       if (parentId == null) {
         throw new NullPointerException("null parent id");
       }
-      Tag tag = new Tag(id, ((Element) node).getQualifiedName(), base, offset(), parentId);
+      Tag tag = new Tag(id, ((Element) node).getQualifiedName(), base, offset(), docId, parentId);
       tags.set(insert, tag);
       range(0, ((Element) node).getAttributeCount())
         .forEach(i -> {
