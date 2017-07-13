@@ -19,18 +19,22 @@ public class TaggedCodepoints extends TaggedText {
     super(doc);
   }
 
-  public TaggedCodepoints(String text, String docId, List<Tag> tags) {
-    super(text, docId, tags);
-    int length = text.codePointCount(0, sb.length());
-    // TODO check if tags are sorted
-    for (Tag tag : tags) {
-      if (tag.start > tag.end) {
-        throw new IllegalArgumentException("tag start must be < tag end");
-      } else if (tag.start < 0 || tag.end > length) {
-        throw new IllegalArgumentException("tag out of bounds");
-      }
-    }
+  public TaggedCodepoints(Document doc, String id) {
+    super(doc, id);
   }
+
+  // public TaggedCodepoints(String text, String docId, List<Tag> tags) {
+  //   super(text, docId, tags);
+  //   int length = text.codePointCount(0, sb.length());
+  //   // TODO check if tags are sorted
+  //   for (Tag tag : tags) {
+  //     if (tag.start > tag.end) {
+  //       throw new IllegalArgumentException("tag start must be < tag end");
+  //     } else if (tag.start < 0 || tag.end > length) {
+  //       throw new IllegalArgumentException("tag out of bounds");
+  //     }
+  //   }
+  // }
 
   @Override
   protected void append(String s) {
