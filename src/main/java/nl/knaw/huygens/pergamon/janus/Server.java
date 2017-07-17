@@ -41,6 +41,8 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
+import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
@@ -64,7 +66,7 @@ import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
       url = "https://www.gnu.org/licenses/licenses.en.html#GPL"
     )
   ),
-  schemes = {SwaggerDefinition.Scheme.HTTP, SwaggerDefinition.Scheme.HTTPS}
+  schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
   public static class Config extends Configuration {
@@ -122,7 +124,7 @@ public class Server extends Application<Server.Config> {
     @GET
     @Path("{id}")
     @ApiOperation(value = "Gets a document and its annotations by id",
-      response = Annotation.class)
+      response = DocAndAnnotations.class)
     @ApiResponses(value = {
       @ApiResponse(code = 404, message = "Document not found")
     })
@@ -136,8 +138,14 @@ public class Server extends Application<Server.Config> {
 
     @GET
     @Path("{id}/annotations")
+    @ApiOperation(value = "Gets the annotations of a specific document by id",
+      response = Annotation.class,
+      responseContainer = "List"
+    )
     public Response getAnnotations(@PathParam("id") String id,
+                                   @ApiParam("Recursively get annotations on annotations also")
                                    @QueryParam("recursive") @DefaultValue("true") boolean recursive,
+                                   @ApiParam(value = "Lucene style query string")
                                    @QueryParam("q") String query) {
       List<Annotation> result = backend.getAnnotations(id, query, recursive);
       // TODO distinguish between id not found (404) and no annotations for id (empty list)
@@ -148,16 +156,18 @@ public class Server extends Application<Server.Config> {
     }
 
     @POST
-    @Path("/annotate")
+    @Path("/documents/{id}/annotations")
     @Consumes("application/json")
+    @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
     public Response putAnnotation(Annotation ann)
       throws IOException {
       return putAnnotation(null, ann);
     }
 
-    @Consumes("application/json")
-    @Path("/annotate/{id}")
     @POST
+    @Path("/annotate/{id}")
+    @Consumes("application/json")
+    @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
     public Response putAnnotation(@PathParam("id") String id, Annotation ann)
       throws IOException {
       return backend.putAnnotation(ann, id).asResponse();
