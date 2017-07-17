@@ -16,6 +16,7 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
 import javax.annotation.Nullable;
@@ -132,6 +133,7 @@ public class ElasticBackend implements Backend {
                                     .setTypes(annotationType)
                                     .setQuery(query)
                                     .setFetchSource(ANNOTATION_FIELDS, null)
+                                    .addSort("order", SortOrder.ASC)
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
@@ -271,7 +273,7 @@ public class ElasticBackend implements Backend {
           return new PutResult(docId, status);
         }
       }
-      return new PutResult(docId, 200);
+      return new PutResult(docId, 201);
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
     }

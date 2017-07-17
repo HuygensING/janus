@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
 
@@ -46,5 +47,19 @@ public class TestElasticBackend {
 
     result = backend.putTxt("some_id", "some other text");
     assertEquals(409, result.status);
+  }
+
+  @Test
+  public void putXml() throws Exception {
+    Backend.PutResult result = backend.putXml("blabla!", "<msg>hello, <xml/> world!</msg>");
+    assertEquals(201, result.status);
+
+    sleep(1000); // ES may handle get before document is properly indexed
+
+    DocAndAnnotations doc = backend.getWithAnnotations(result.id, true);
+    assertEquals("hello,  world!", doc.text);
+    assertEquals(2, doc.annotations.size());
+    assertEquals("msg", doc.annotations.get(0).tag);
+    assertEquals("xml", doc.annotations.get(1).tag);
   }
 }
