@@ -65,6 +65,7 @@ import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
       url = "https://www.gnu.org/licenses/licenses.en.html#GPL"
     )
   ),
+  consumes = {MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML},
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
@@ -174,7 +175,7 @@ public class Server extends Application<Server.Config> {
     @POST
     @Path("documents")
     @Consumes(MediaType.TEXT_PLAIN)
-    @ApiOperation(value = "Add a textual document")
+    @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml")
     public Response putTxt(String content) throws IOException {
       return putTxt(null, content);
     }
@@ -182,7 +183,7 @@ public class Server extends Application<Server.Config> {
     @PUT
     @Path("documents/{id}")
     @Consumes(MediaType.TEXT_PLAIN)
-    @ApiOperation(value = "Add a textual document at a specific id")
+    @ApiOperation(value = "Add a document with a specific id", consumes = "text/plain, application/xml")
     public Response putTxt(@PathParam("id") String id, String content) throws IOException {
       return backend.putTxt(id, content).asResponse();
     }
@@ -190,7 +191,6 @@ public class Server extends Application<Server.Config> {
     @POST
     @Path("documents")
     @Consumes(MediaType.APPLICATION_XML)
-    @ApiOperation(value = "Add an XML document")
     public Response putXml(String content) throws IOException {
       return putXml(null, content);
     }
@@ -198,7 +198,6 @@ public class Server extends Application<Server.Config> {
     @PUT
     @Path("documents/{id}")
     @Consumes(MediaType.APPLICATION_XML)
-    @ApiOperation(value = "Add an XML document at a specific id")
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
         return backend.putXml(id, content).asResponse();
