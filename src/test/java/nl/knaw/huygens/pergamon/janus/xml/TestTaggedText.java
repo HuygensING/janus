@@ -3,7 +3,6 @@ package nl.knaw.huygens.pergamon.janus.xml;
 import nu.xom.Document;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -41,13 +40,13 @@ public abstract class TestTaggedText {
 
   TaggedText parse(String xml) {
     try {
-      return parse(new nu.xom.Builder().build(new ByteArrayInputStream(xml.getBytes())));
+      return construct(XmlParser.fromString(xml));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  protected abstract TaggedText parse(Document doc);
+  protected abstract TaggedText construct(Document doc);
 
   // Constructs ann annotation with the required tag, start, end.
   // Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.

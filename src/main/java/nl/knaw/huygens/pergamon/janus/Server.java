@@ -20,7 +20,7 @@ import nl.knaw.huygens.pergamon.janus.xml.TaggedBytes;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedUtf16;
-import nu.xom.Builder;
+import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
 import nu.xom.Document;
 import nu.xom.ParsingException;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -37,7 +37,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.io.StringReader;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.function.Function;
@@ -116,7 +115,6 @@ public class Server extends Application<Server.Config> {
   @Path("/")
   public static class Resource {
     private final Backend backend;
-    private static final Builder parser = new Builder();
 
     public Resource(Config config) throws UnknownHostException {
       backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
@@ -204,7 +202,7 @@ public class Server extends Application<Server.Config> {
     @ApiOperation(value = "Add an XML document at a specific id")
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
-        return backend.putXml(id, parser.build(new StringReader(content))).asResponse();
+        return backend.putXml(id, content).asResponse();
       } catch (ParsingException e) {
         return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
       }
@@ -216,7 +214,7 @@ public class Server extends Application<Server.Config> {
     public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
       throws ParsingException, IOException {
 
-      return offsetType.transform(parser.build(new StringReader(input)));
+      return offsetType.transform(XmlParser.fromString(input));
     }
   }
 

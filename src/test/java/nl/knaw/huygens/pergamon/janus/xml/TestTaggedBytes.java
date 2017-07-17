@@ -4,7 +4,7 @@ import nu.xom.Document;
 
 public class TestTaggedBytes extends TestTaggedText {
   @Override
-  protected TaggedText parse(Document doc) {
+  protected TaggedText construct(Document doc) {
     return new TaggedBytes(doc);
   }
 

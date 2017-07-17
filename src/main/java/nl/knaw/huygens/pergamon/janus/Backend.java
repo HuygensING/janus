@@ -2,7 +2,8 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
-import nu.xom.Document;
+import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
+import nu.xom.ParsingException;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
@@ -53,8 +54,8 @@ public interface Backend extends AutoCloseable {
 
   PutResult putTxt(@Nullable String id, String content) throws IOException;
 
-  default PutResult putXml(String id, Document document) throws IOException {
-    return putXml(new TaggedCodepoints(document, id));
+  default PutResult putXml(String id, String document) throws IOException, ParsingException {
+    return putXml(new TaggedCodepoints(XmlParser.fromString(document), id));
   }
 
   PutResult putXml(TaggedCodepoints document) throws IOException;

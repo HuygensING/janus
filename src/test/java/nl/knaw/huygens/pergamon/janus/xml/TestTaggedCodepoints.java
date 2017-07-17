@@ -7,7 +7,7 @@ import static org.junit.Assert.assertEquals;
 
 public class TestTaggedCodepoints extends TestTaggedText {
   @Override
-  protected TaggedText parse(Document doc) {
+  protected TaggedText construct(Document doc) {
     return new TaggedCodepoints(doc);
   }
 

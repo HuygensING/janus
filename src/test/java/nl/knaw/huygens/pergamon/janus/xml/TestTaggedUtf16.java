@@ -4,7 +4,7 @@ import nu.xom.Document;
 
 public class TestTaggedUtf16 extends TestTaggedText {
   @Override
-  protected TaggedText parse(Document doc) {
+  protected TaggedText construct(Document doc) {
     return new TaggedUtf16(doc);
   }
 
