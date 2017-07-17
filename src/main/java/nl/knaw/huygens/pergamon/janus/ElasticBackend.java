@@ -37,6 +37,7 @@ import static java.util.Collections.EMPTY_MAP;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
+import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
@@ -142,7 +143,7 @@ public class ElasticBackend implements Backend {
 
       Annotation ann = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
         (String) map.get("tag"), null, (String) map.get("type"), hit.getId());
-      ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
+      copyAttributes(map, ann);
 
       return ann;
     }).collect(Collectors.toList());
@@ -273,5 +274,48 @@ public class ElasticBackend implements Backend {
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
+  }
+
+  @Override
+  public String getXml(String id) throws IOException {
+    GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
+    if (!response.isExists()) {
+      return null;
+    }
+    String text = (String) response.getSourceAsMap().get("body");
+    List<Tag> tags = getTags(id);
+
+    return new TaggedCodepoints(text, id, tags).reconstruct().toXML();
+  }
+
+  private static final String[] TAG_FIELDS =
+    new String[]{"attrib", "start", "end", "tag", "target", "xmlParent"};
+
+  private List<Tag> getTags(String id) {
+    BoolQueryBuilder query = boolQuery().filter(termQuery("target", id))
+                                        .filter(termQuery("type", "tag"))
+                                        .filter(existsQuery("xmlParent"));
+
+    SearchResponse response = client.prepareSearch(annotationIndex)
+                                    .setTypes(annotationType)
+                                    .setQuery(query)
+                                    .setFetchSource(TAG_FIELDS, null)
+                                    .addSort("order", SortOrder.ASC)
+                                    // TODO: we should scroll.
+                                    .setSize(1000).get();
+
+    return Arrays.stream(response.getHits().getHits()).map(hit -> {
+      Map<String, Object> map = hit.getSourceAsMap();
+
+      Tag tag = new Tag(hit.getId(), (String) map.get("tag"), (int) map.get("start"), (int) map.get("end"),
+        (String) map.get("target"), (String) map.get("xmlParent"));
+      copyAttributes(map, tag);
+
+      return tag;
+    }).collect(Collectors.toList());
+  }
+
+  private static void copyAttributes(Map<String, Object> map, Annotation ann) {
+    ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
   }
 }

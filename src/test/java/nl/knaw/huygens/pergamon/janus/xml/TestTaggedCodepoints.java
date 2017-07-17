@@ -23,5 +23,8 @@ public class TestTaggedCodepoints extends TestTaggedText {
 
     xml = "<?xml version=\"1.0\"?>\n<x><p /><q /></x>\n";
     assertEquals(xml, ((TaggedCodepoints) parse(xml)).reconstruct().toXML());
+
+    xml = "<?xml version=\"1.0\"?>\n<p> hello <q>xml <r /> and json</q> world</p>\n";
+    assertEquals(xml, ((TaggedCodepoints) parse(xml)).reconstruct().toXML());
   }
 }

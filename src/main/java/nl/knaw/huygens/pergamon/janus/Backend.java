@@ -50,6 +50,11 @@ public interface Backend extends AutoCloseable {
    */
   DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException;
 
+  /**
+   * Produce reconstruction of XML document.
+   */
+  String getXml(String id) throws IOException;
+
   PutResult putAnnotation(Annotation ann) throws IOException;
 
   PutResult putTxt(@Nullable String id, String content) throws IOException;

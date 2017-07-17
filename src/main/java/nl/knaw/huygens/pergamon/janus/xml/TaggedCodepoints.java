@@ -23,18 +23,18 @@ public class TaggedCodepoints extends TaggedText {
     super(doc, id);
   }
 
-  // public TaggedCodepoints(String text, String docId, List<Tag> tags) {
-  //   super(text, docId, tags);
-  //   int length = text.codePointCount(0, sb.length());
-  //   // TODO check if tags are sorted
-  //   for (Tag tag : tags) {
-  //     if (tag.start > tag.end) {
-  //       throw new IllegalArgumentException("tag start must be < tag end");
-  //     } else if (tag.start < 0 || tag.end > length) {
-  //       throw new IllegalArgumentException("tag out of bounds");
-  //     }
-  //   }
-  // }
+  public TaggedCodepoints(String text, String docId, List<Tag> tags) {
+    super(text, docId, tags);
+    int length = text.codePointCount(0, sb.length());
+    // TODO check if tags are sorted
+    for (Tag tag : tags) {
+      if (tag.start > tag.end) {
+        throw new IllegalArgumentException("tag start must be < tag end");
+      } else if (tag.start < 0 || tag.end > length) {
+        throw new IllegalArgumentException("tag out of bounds");
+      }
+    }
+  }
 
   @Override
   protected void append(String s) {
@@ -51,23 +51,37 @@ public class TaggedCodepoints extends TaggedText {
    * Reconstruct XML document from text and list of tags.
    */
   public Document reconstruct() {
-    return new Document(reconstruct(tags.get(0), 0, tags.stream().collect(groupingBy(t -> t.xmlParent))));
+    Element root = new Reconstruction(tags.stream().collect(groupingBy(t -> t.xmlParent))).apply(tags.get(0));
+    return new Document(root);
   }
 
-  private Element reconstruct(Tag root, int textIndex, Map<String, List<Tag>> childrenOf) {
-    // Children are sorted by start.
-    Element elem = new Element(root.tag);
+  private class Reconstruction {
+    private Map<String, List<Tag>> children;
+    private int textIndex;
 
-    for (Tag child : childrenOf.getOrDefault(root.id, emptyList())) {
-      if (child.start > textIndex) {
-        // TODO use codepoints
-        elem.appendChild(sb.substring(textIndex, child.start));
-        textIndex = child.start;
-      }
-
-      elem.appendChild(reconstruct(child, textIndex, childrenOf));
+    Reconstruction(Map<String, List<Tag>> children) {
+      this.children = children;
     }
 
-    return elem;
+    private Element apply(Tag root) {
+      // Children are sorted by start.
+      Element elem = new Element(root.tag);
+
+      for (Tag child : children.getOrDefault(root.id, emptyList())) {
+        if (child.start > textIndex) {
+          // TODO use codepoints
+          elem.appendChild(sb.substring(textIndex, child.start));
+          textIndex = child.start;
+        }
+
+        elem.appendChild(apply(child));
+      }
+      if (textIndex < root.end) {
+        elem.appendChild(sb.substring(textIndex, root.end));
+        textIndex = root.end;
+      }
+
+      return elem;
+    }
   }
 }
