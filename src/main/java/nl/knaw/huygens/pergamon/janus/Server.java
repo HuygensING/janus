@@ -169,7 +169,11 @@ public class Server extends Application<Server.Config> {
     @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
     public Response putAnnotation(@PathParam("id") String id, Annotation ann)
       throws IOException {
-      return backend.putAnnotation(ann, id).asResponse();
+      if (ann.id != null) {
+        throw new IllegalArgumentException("annotation may not determine its own id");
+      }
+      ann.id = id;
+      return backend.putAnnotation(ann).asResponse();
     }
 
     @POST

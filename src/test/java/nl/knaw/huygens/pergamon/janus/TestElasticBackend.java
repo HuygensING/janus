@@ -40,13 +40,22 @@ public class TestElasticBackend {
   }
 
   @Test
-  public void putTxt() throws IOException {
+  public void nonExistent() throws IOException {
+    DocAndAnnotations result = backend.getWithAnnotations("nothing here", false);
+    assertEquals(null, result);
+  }
+
+  @Test
+  public void putTxtAndAnnotation() throws IOException {
     Backend.PutResult result = backend.putTxt("some_id", "some text");
     assertEquals(201, result.status);
     assertEquals("some_id", result.id);
 
     result = backend.putTxt("some_id", "some other text");
     assertEquals(409, result.status);
+
+    result = backend.putAnnotation(new Annotation(0, 4, "some_id", "note", null, "test", null));
+    assertEquals(201, result.status);
   }
 
   @Test

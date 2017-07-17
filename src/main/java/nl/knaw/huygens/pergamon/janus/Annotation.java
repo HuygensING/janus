@@ -13,7 +13,7 @@ public class Annotation {
 
   // id of this annotation. Must be null on input.
   @JsonInclude(JsonInclude.Include.NON_NULL)
-  public final String id;
+  public String id;
 
   @JsonProperty
   public final int start;

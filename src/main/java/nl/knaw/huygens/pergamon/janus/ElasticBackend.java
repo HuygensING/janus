@@ -170,11 +170,7 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public PutResult putAnnotation(Annotation ann, String id) throws IOException {
-    if (ann.id != null) {
-      throw new IllegalArgumentException("annotation may not determine its own id");
-    }
-
+  public PutResult putAnnotation(Annotation ann) throws IOException {
     try {
       // If there's a document with the id, we annotate that, else the annotation with the id.
       // XXX we need to be smarter, e.g., address the document by index/type/id.
@@ -190,7 +186,7 @@ public class ElasticBackend implements Backend {
         root = (String) got.getSourceAsMap().get("root");
       }
 
-      IndexResponse response = prepareCreate(annotationIndex, annotationType, id).setSource(
+      IndexResponse response = prepareCreate(annotationIndex, annotationType, ann.id).setSource(
         jsonBuilder().startObject()
                      .field("start", ann.start)
                      .field("end", ann.end)
