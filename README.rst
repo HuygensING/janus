@@ -26,13 +26,14 @@ Add the annotations index::
 You can now upload an XML file to have it indexed as a document with one
 annotation per tag::
 
-    curl -X POST http://localhost:8080/documents/putxml/some_id -d @example.xml
+    curl -X PUT -H "Content-Type: application/xml"  \
+        http://localhost:8080/documents/some_id -d @example.xml
     curl http://localhost:8080/documents/some_id
 
 Add an annotation::
 
     curl -H 'Content-Type: application/json' -X POST \
-        http://localhost:8080/documents/annotate -d '{
+        http://localhost:8080/documents/some_id/annotations -d '{
             "target": "some_id", "start": 4, "end": 10,
             "tag": "note", "type": "user"
         }'
