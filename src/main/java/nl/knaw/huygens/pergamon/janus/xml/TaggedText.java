@@ -21,8 +21,8 @@ import static java.util.stream.IntStream.range;
 public abstract class TaggedText {
   public final String docId;
   private final HashMap<Node, String> nodeId = new HashMap<>();
-  protected final List<Tag> tags;
-  protected final StringBuilder sb;
+  final List<Tag> tags;
+  final StringBuilder sb;
 
   TaggedText(Document doc) {
     this(doc, UUID.randomUUID().toString());

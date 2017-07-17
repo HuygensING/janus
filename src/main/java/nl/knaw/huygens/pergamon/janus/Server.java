@@ -116,7 +116,7 @@ public class Server extends Application<Server.Config> {
   public static class Resource {
     private final Backend backend;
 
-    public Resource(Config config) throws UnknownHostException {
+    Resource(Config config) throws UnknownHostException {
       backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
     }
 

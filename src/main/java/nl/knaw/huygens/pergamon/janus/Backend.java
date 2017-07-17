@@ -29,7 +29,7 @@ public interface Backend extends AutoCloseable {
       this(id, status.getStatusCode());
     }
 
-    public Response asResponse() {
+    Response asResponse() {
       return Response.status(status).entity(this).build();
     }
   }
