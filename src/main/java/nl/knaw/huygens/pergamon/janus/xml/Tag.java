@@ -8,9 +8,6 @@ import nl.knaw.huygens.pergamon.janus.Annotation;
  * A Tag represents an XML element, one of the types of annotations that we support.
  */
 public class Tag extends Annotation {
-  @JsonProperty
-  public final String id;
-
   // Id of Tag that represents the parent element in the XML tree.
   // We store these so that we can reconstruct the tree unambiguously.
   // The combination of Jackson annotations should ensure that no field
@@ -21,13 +18,11 @@ public class Tag extends Annotation {
 
   public Tag() {
     super();
-    id = "id";
     xmlParent = null;
   }
 
   public Tag(String id, String tag, int start, int end, String target, String xmlParent) {
-    super(start, end, target, tag, "", "tag");
-    this.id = id;
+    super(start, end, target, tag, "", "tag", id);
     this.xmlParent = xmlParent;
   }
 }

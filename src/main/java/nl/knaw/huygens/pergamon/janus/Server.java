@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -128,7 +127,7 @@ public class Server extends Application<Server.Config> {
       @ApiResponse(code = 404, message = "Document not found")
     })
     public Response get(@ApiParam(value = "document ID") @PathParam("id") String id) throws IOException {
-      Map<String, Object> result = backend.getWithAnnotations(id, true);
+      DocAndAnnotations result = backend.getWithAnnotations(id, true);
       if (result == null) {
         return Response.status(NOT_FOUND).build();
       }
@@ -140,7 +139,7 @@ public class Server extends Application<Server.Config> {
     public Response getAnnotations(@PathParam("id") String id,
                                    @QueryParam("recursive") @DefaultValue("true") boolean recursive,
                                    @QueryParam("q") String query) {
-      List<Object> result = backend.getAnnotations(id, query, recursive);
+      List<Annotation> result = backend.getAnnotations(id, query, recursive);
       // TODO distinguish between id not found (404) and no annotations for id (empty list)
       if (result.isEmpty()) {
         return Response.status(NOT_FOUND).build();

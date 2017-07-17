@@ -22,7 +22,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -66,7 +65,7 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException {
+  public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
     boolean isRoot = true;
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
     if (!response.isExists()) {
@@ -77,25 +76,20 @@ public class ElasticBackend implements Backend {
       isRoot = false;
     }
 
-    HashMap<String, Object> result = new HashMap<>();
-    result.put("annotations", getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
-    Object text = response.getSourceAsMap().get("body");
-    if (text != null) {
-      result.put("text", text);
-    }
-    return result;
+    return new DocAndAnnotations((String) response.getSourceAsMap().get("body"),
+      getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
   }
 
   @Override
-  public List<Object> getAnnotations(String id, @Nullable String q, boolean recursive) {
+  public List<Annotation> getAnnotations(String id, @Nullable String q, boolean recursive) {
     return getAnnotations(id, q, recursive, false, new ArrayList<>());
   }
 
   // Fields of _source that we want below.
   private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "tag", "type", "target"};
 
-  private List<Object> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
-                                      List<Object> result) {
+  private List<Annotation> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
+                                          List<Annotation> result) {
     BoolQueryBuilder query = boolQuery().filter(termQuery(recursive && isRoot ? "root" : "target", id));
     if (q != null) {
       query.must(queryStringQuery(q));
@@ -108,24 +102,21 @@ public class ElasticBackend implements Backend {
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
-    List<Map<String, Object>> hits = Arrays.stream(response.getHits().getHits()).map(hit -> {
-      String hitId = hit.getId();
+    List<Annotation> hits = Arrays.stream(response.getHits().getHits()).map(hit -> {
       Map<String, Object> map = hit.getSourceAsMap();
 
-      // Make returned object smaller on the wire.
-      if (((Map<?, ?>) map.getOrDefault("attrib", EMPTY_MAP)).isEmpty()) {
-        map.remove("attrib");
-      }
+      Annotation ann = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
+        (String) map.get("tag"), null, (String) map.get("type"), hit.getId());
+      ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
 
-      map.put("id", hitId);
-      return map;
+      return ann;
     }).collect(Collectors.toList());
     result.addAll(hits);
 
     // If id is a root (a document), searching for the "root" attribute
     // that caches its id suffices. Otherwise, we have to query recursively.
     if (recursive && !isRoot) {
-      hits.forEach(map -> getAnnotations((String) map.get("id"), q, true, false, result));
+      hits.forEach(ann -> getAnnotations(ann.id, q, true, false, result));
     }
 
     return result;
@@ -145,6 +136,10 @@ public class ElasticBackend implements Backend {
 
   @Override
   public PutResult putAnnotation(Annotation ann, String id) throws IOException {
+    if (ann.id != null) {
+      throw new IllegalArgumentException("annotation may not determine its own id");
+    }
+
     try {
       // If there's a document with the id, we annotate that, else the annotation with the id.
       // XXX we need to be smarter, e.g., address the document by index/type/id.

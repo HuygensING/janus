@@ -8,7 +8,6 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public interface Backend extends AutoCloseable {
   class PutResult {
@@ -39,7 +38,7 @@ public interface Backend extends AutoCloseable {
    * <p>
    * If recursive, get annotations on annotations as well.
    */
-  List<Object> getAnnotations(String id, @Nullable String q, boolean recursive);
+  List<Annotation> getAnnotations(String id, @Nullable String q, boolean recursive);
 
   /**
    * Retrieve the document with the given id and its annotations.
@@ -48,7 +47,7 @@ public interface Backend extends AutoCloseable {
    * <p>
    * If recursive, get annotations on annotations as well.
    */
-  Map<String, Object> getWithAnnotations(String id, boolean recursive) throws IOException;
+  DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException;
 
   PutResult putAnnotation(Annotation ann, String id) throws IOException;
 
