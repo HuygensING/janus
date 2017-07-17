@@ -1,0 +1,20 @@
+{
+  "_all": {"enabled": false},
+  "dynamic": "strict",
+  "properties": {
+    "body": {"type": "text"},
+    "attrib": {
+      "type": "nested",
+      "dynamic": true
+    },
+    "root": {"type": "keyword"},
+    "target": {"type": "keyword"},
+    "type": {"type": "keyword"},
+    "start": {"type": "integer"},
+    "end": {"type": "integer"},
+    "order": {"type": "integer"},
+    "type": {"type": "keyword"},
+    "tag": {"type": "keyword"},
+    "xmlParent": {"type": "keyword"}
+  }
+}

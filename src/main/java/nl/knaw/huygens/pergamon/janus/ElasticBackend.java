@@ -1,7 +1,9 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.google.common.io.CharStreams;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.get.GetResponse;
@@ -11,6 +13,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
@@ -18,12 +21,15 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
@@ -35,9 +41,9 @@ import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
 public class ElasticBackend implements Backend {
   // Name of ES index used to store annotations.
-  private static final String ANNOTATION_INDEX = "janus_annotations";
+  private final String annotationIndex;
   // Type name of annotations in the ES index.
-  private static final java.lang.String ANNOTATION_TYPE = "annotation";
+  private final String annotationType;
 
   private final Client client;
   private final String documentIndex;
@@ -49,14 +55,23 @@ public class ElasticBackend implements Backend {
    * @throws UnknownHostException
    */
   public ElasticBackend(String host, String documentIndex, String documentType) throws UnknownHostException {
-    if (ANNOTATION_INDEX.equals(documentIndex) && ANNOTATION_TYPE.equals(documentType)) {
+    this(host, documentIndex, documentType, "janus_annotations", "annotation");
+  }
+
+  // For test purposes only.
+  ElasticBackend(String host, String documentIndex, String documentType,
+                 String annotationIndex, String annotationType) throws UnknownHostException {
+    if (Objects.equals(documentIndex, annotationIndex) || Objects.equals(annotationType, documentType)) {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
     }
 
-    client = new PreBuiltTransportClient(Settings.EMPTY)
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), 9300));
+    this.annotationIndex = annotationIndex;
+    this.annotationType = annotationType;
     this.documentIndex = documentIndex;
     this.documentType = documentType;
+
+    client = new PreBuiltTransportClient(Settings.EMPTY)
+      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), 9300));
   }
 
   @Override
@@ -64,12 +79,30 @@ public class ElasticBackend implements Backend {
     client.close();
   }
 
+  // For test purposes only.
+  boolean initIndices() throws IOException {
+    InputStream mapping = ElasticBackend.class.getResourceAsStream("/annotation-mapping.json");
+    CreateIndexResponse resp = client.admin().indices().prepareCreate(annotationIndex)
+                                     .addMapping(annotationType, CharStreams.toString(new InputStreamReader(mapping)),
+                                       XContentType.JSON)
+                                     .get();
+    if (!resp.isAcknowledged()) {
+      return false;
+    }
+    return client.admin().indices().prepareCreate(documentIndex).get().isAcknowledged();
+  }
+
+  // For test purposes only.
+  void removeIndices() {
+    client.admin().indices().prepareDelete(annotationIndex, documentIndex).get();
+  }
+
   @Override
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
     boolean isRoot = true;
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
     if (!response.isExists()) {
-      response = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, id).get();
+      response = client.prepareGet(annotationIndex, annotationType, id).get();
       if (!response.isExists()) {
         return null;
       }
@@ -95,8 +128,8 @@ public class ElasticBackend implements Backend {
       query.must(queryStringQuery(q));
     }
 
-    SearchResponse response = client.prepareSearch(ANNOTATION_INDEX)
-                                    .setTypes(ANNOTATION_TYPE)
+    SearchResponse response = client.prepareSearch(annotationIndex)
+                                    .setTypes(annotationType)
                                     .setQuery(query)
                                     .setFetchSource(ANNOTATION_FIELDS, null)
                                     // TODO: should we scroll, or should the client scroll?
@@ -148,14 +181,14 @@ public class ElasticBackend implements Backend {
       if (got.isExists()) {
         root = ann.target;
       } else {
-        got = client.prepareGet(ANNOTATION_INDEX, ANNOTATION_TYPE, ann.target).get();
+        got = client.prepareGet(annotationIndex, annotationType, ann.target).get();
         if (!got.isExists()) {
           return new PutResult(null, 404);
         }
         root = (String) got.getSourceAsMap().get("root");
       }
 
-      IndexResponse response = prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, id).setSource(
+      IndexResponse response = prepareCreate(annotationIndex, annotationType, id).setSource(
         jsonBuilder().startObject()
                      .field("start", ann.start)
                      .field("end", ann.end)
@@ -212,7 +245,7 @@ public class ElasticBackend implements Backend {
       BulkRequestBuilder bulk = client.prepareBulk();
       for (int i = 0; i < tags.size(); i++) {
         Tag ann = tags.get(i);
-        bulk.add(prepareCreate(ANNOTATION_INDEX, ANNOTATION_TYPE, ann.id)
+        bulk.add(prepareCreate(annotationIndex, annotationType, ann.id)
           .setSource(jsonBuilder()
             .startObject()
             .field("start", ann.start)
