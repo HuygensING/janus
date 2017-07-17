@@ -29,6 +29,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -111,8 +112,8 @@ public class Server extends Application<Server.Config> {
   }
 
   @Api(value = "janus")
-  @Path("/documents")
   @Produces(MediaType.APPLICATION_JSON)
+  @Path("/")
   public static class Resource {
     private final Backend backend;
     private static final Builder parser = new Builder();
@@ -122,7 +123,7 @@ public class Server extends Application<Server.Config> {
     }
 
     @GET
-    @Path("{id}")
+    @Path("documents/{id}")
     @ApiOperation(value = "Gets a document and its annotations by id",
       response = DocAndAnnotations.class)
     @ApiResponses(value = {
@@ -137,7 +138,7 @@ public class Server extends Application<Server.Config> {
     }
 
     @GET
-    @Path("{id}/annotations")
+    @Path("documents/{id}/annotations")
     @ApiOperation(value = "Gets the annotations of a specific document by id",
       response = Annotation.class,
       responseContainer = "List"
@@ -156,8 +157,8 @@ public class Server extends Application<Server.Config> {
     }
 
     @POST
-    @Path("/documents/{id}/annotations")
-    @Consumes("application/json")
+    @Path("documents/{id}/annotations")
+    @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
     public Response putAnnotation(Annotation ann)
       throws IOException {
@@ -165,34 +166,42 @@ public class Server extends Application<Server.Config> {
     }
 
     @POST
-    @Path("/annotate/{id}")
-    @Consumes("application/json")
+    @Path("annotations/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
     public Response putAnnotation(@PathParam("id") String id, Annotation ann)
       throws IOException {
       return backend.putAnnotation(ann, id).asResponse();
     }
 
-    @Path("/put")
     @POST
+    @Path("documents")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @ApiOperation(value = "Add a textual document")
     public Response putTxt(String content) throws IOException {
       return putTxt(null, content);
     }
 
-    @Path("/put/{id}")
-    @POST
+    @PUT
+    @Path("documents/{id}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @ApiOperation(value = "Add a textual document at a specific id")
     public Response putTxt(@PathParam("id") String id, String content) throws IOException {
       return backend.putTxt(id, content).asResponse();
     }
 
-    @Path("/putxml")
     @POST
+    @Path("documents")
+    @Consumes(MediaType.APPLICATION_XML)
+    @ApiOperation(value = "Add an XML document")
     public Response putXml(String content) throws IOException {
       return putXml(null, content);
     }
 
-    @Path("/putxml/{id}")
-    @POST
+    @PUT
+    @Path("documents/{id}")
+    @Consumes(MediaType.APPLICATION_XML)
+    @ApiOperation(value = "Add an XML document at a specific id")
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
         return backend.putXml(id, parser.build(new StringReader(content))).asResponse();
@@ -201,8 +210,9 @@ public class Server extends Application<Server.Config> {
       }
     }
 
-    @Path("/transform")
     @POST
+    @Consumes(MediaType.APPLICATION_XML)
+    @Path("demo/transform")
     public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
       throws ParsingException, IOException {
 
