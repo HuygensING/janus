@@ -37,7 +37,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.function.Function;
 
@@ -116,8 +115,8 @@ public class Server extends Application<Server.Config> {
   public static class Resource {
     private final Backend backend;
 
-    Resource(Config config) throws UnknownHostException {
-      backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
+    Resource(Backend backend) {
+      this.backend = backend;
     }
 
     @GET
@@ -238,7 +237,8 @@ public class Server extends Application<Server.Config> {
   }
 
   @Override
-  public void run(Config configuration, Environment environment) throws Exception {
-    environment.jersey().register(new Resource(configuration));
+  public void run(Config config, Environment environment) throws Exception {
+    final Backend backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
+    environment.jersey().register(new Resource(backend));
   }
 }
