@@ -32,7 +32,7 @@ annotation per tag::
 
 Add an annotation::
 
-    curl -H 'Content-Type: application/json' -X POST \
+    curl -X POST -H 'Content-Type: application/json' \
         http://localhost:8080/documents/some_id/annotations -d '{
             "target": "some_id", "start": 4, "end": 10,
             "tag": "note", "type": "user"
@@ -91,8 +91,7 @@ Special support for XML
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Janus has special support for XML documents, which are parsed and turned into
-a flat text document and one annotation per XML element by the ``putxml``
-endpoint.
+a flat text document and one annotation per XML element.
 
 The text document corresponds to the text in between the tags; in XPath
 terminology, it's the ``string()`` of the whole document. Each element is
@@ -112,9 +111,9 @@ Example: bulk indexing
 To upload XML files in bulk for indexing, use something like::
 
     find some_dir -name '*.xml' -print0 |
-        xargs -0 -n 1 -P $(nproc) sh -c '
-            curl -s -XPOST http://localhost:8080/documents/putxml/$(uuidgen) \
-                -d @$0
+        xargs -0 -n 1 -P "$(nproc)" sh -c '
+            curl -s -X PUT -H "Content-Type: application/xml"  \
+                http://localhost:8080/documents/$(uuidgen) -d @$0
             echo " " $0
         '
 
