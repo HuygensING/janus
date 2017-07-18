@@ -5,7 +5,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import nu.xom.ParsingException;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -19,11 +18,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.List;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 
 @Api("documents")
 @Produces(MediaType.APPLICATION_JSON)
@@ -43,11 +37,7 @@ public class DocumentsResource {
     @ApiResponse(code = 404, message = "Document not found")
   })
   public Response get(@ApiParam(value = "document ID") @PathParam("id") String id) throws IOException {
-    DocAndAnnotations result = backend.getWithAnnotations(id, true);
-    if (result == null) {
-      return Response.status(NOT_FOUND).build();
-    }
-    return Response.status(OK).entity(result).build();
+    return Backend.asResponse(backend.getWithAnnotations(id, true));
   }
 
   @GET
@@ -61,12 +51,8 @@ public class DocumentsResource {
                                  @QueryParam("recursive") @DefaultValue("true") boolean recursive,
                                  @ApiParam(value = "Lucene style query string")
                                  @QueryParam("q") String query) {
-    List<Annotation> result = backend.getAnnotations(id, query, recursive);
     // TODO distinguish between id not found (404) and no annotations for id (empty list)
-    if (result.isEmpty()) {
-      return Response.status(NOT_FOUND).build();
-    }
-    return Response.status(OK).entity(result).build();
+    return Backend.asResponse(backend.getAnnotations(id, query, recursive));
   }
 
   @POST
@@ -107,11 +93,7 @@ public class DocumentsResource {
   @Path("{id}")
   @Consumes(MediaType.APPLICATION_XML)
   public Response putXml(@PathParam("id") String id, String content) throws IOException {
-    try {
-      return backend.putXml(id, content).asResponse();
-    } catch (ParsingException e) {
-      return Response.status(BAD_REQUEST).entity(e.toString()).build();
-    }
+    return backend.putXml(id, content).asResponse();
   }
 
 }

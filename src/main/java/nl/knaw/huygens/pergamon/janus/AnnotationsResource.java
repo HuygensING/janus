@@ -15,9 +15,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-
 @Api("annotations")
 @Produces(MediaType.APPLICATION_JSON)
 @Path("/annotations")
@@ -36,11 +33,7 @@ public class AnnotationsResource {
     @ApiResponse(code = 404, message = "Annotation not found")
   })
   public Response get(@PathParam("id") String id) {
-    Annotation result = backend.getAnnotation(id);
-    if (result == null) {
-      return Response.status(NOT_FOUND).build();
-    }
-    return Response.status(OK).entity(result).build();
+    return Backend.asResponse(backend.getAnnotation(id));
   }
 
   @POST

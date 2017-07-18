@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
@@ -10,7 +11,12 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+
 public interface Backend extends AutoCloseable {
+  // To be returned by PUT/POST methods.
   class PutResult {
     // Id of document or annotation that was created.
     @JsonProperty
@@ -20,18 +26,38 @@ public interface Backend extends AutoCloseable {
     @JsonProperty
     public final int status;
 
-    PutResult(String id, int status) {
+    @JsonInclude(value = JsonInclude.Include.NON_EMPTY)
+    public final String message;
+
+    PutResult(String id, int status, String message) {
       this.id = id;
       this.status = status;
+      this.message = message;
+    }
+
+    PutResult(String id, int status) {
+      this(id, status, null);
+    }
+
+    PutResult(String id, Response.Status status, String message) {
+      this(id, status.getStatusCode(), message);
     }
 
     PutResult(String id, Response.Status status) {
-      this(id, status.getStatusCode());
+      this(id, status, null);
     }
 
     Response asResponse() {
       return Response.status(status).entity(this).build();
     }
+  }
+
+  /**
+   * Returns a Response with result as the entity. A null result becomes a 404, non-null a 200.
+   * Intended to wrap the result of GETs.
+   */
+  static Response asResponse(Object result) {
+    return (result == null ? Response.status(NOT_FOUND) : Response.status(OK).entity(result)).build();
   }
 
   /**
@@ -64,8 +90,12 @@ public interface Backend extends AutoCloseable {
 
   PutResult putTxt(@Nullable String id, String content) throws IOException;
 
-  default PutResult putXml(String id, String document) throws IOException, ParsingException {
-    return putXml(new TaggedCodepoints(XmlParser.fromString(document), id));
+  default PutResult putXml(String id, String document) throws IOException {
+    try {
+      return putXml(new TaggedCodepoints(XmlParser.fromString(document), id));
+    } catch (ParsingException e) {
+      return new PutResult(id, BAD_REQUEST, e.toString());
+    }
   }
 
   PutResult putXml(TaggedCodepoints document) throws IOException;
