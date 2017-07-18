@@ -2,8 +2,11 @@ package nl.knaw.huygens.pergamon.janus;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -11,6 +14,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 
 @Api("annotations")
 @Produces(MediaType.APPLICATION_JSON)
@@ -20,6 +26,21 @@ public class AnnotationsResource {
 
   AnnotationsResource(Backend backend) {
     this.backend = backend;
+  }
+
+  @GET
+  @Path("{id}")
+  @ApiOperation(value = "Gets an annotation by id",
+    response = Annotation.class)
+  @ApiResponses(value = {
+    @ApiResponse(code = 404, message = "Annotation not found")
+  })
+  public Response get(@PathParam("id") String id) {
+    Annotation result = backend.getAnnotation(id);
+    if (result == null) {
+      return Response.status(NOT_FOUND).build();
+    }
+    return Response.status(OK).entity(result).build();
   }
 
   @POST
