@@ -18,7 +18,7 @@ import java.io.IOException;
 public class AnnotationsResource {
   private final Backend backend;
 
-  public AnnotationsResource(Backend backend) {
+  AnnotationsResource(Backend backend) {
     this.backend = backend;
   }
 

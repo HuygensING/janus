@@ -14,7 +14,7 @@ public class DocAndAnnotations {
   @JsonProperty
   public List<Annotation> annotations = null;
 
-  public DocAndAnnotations(String text, List<Annotation> annotations) {
+  DocAndAnnotations(String text, List<Annotation> annotations) {
     this.text = text;
     this.annotations = annotations;
   }
