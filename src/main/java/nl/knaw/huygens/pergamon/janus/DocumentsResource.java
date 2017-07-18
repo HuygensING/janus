@@ -21,9 +21,9 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
 
 @Api("documents")
 @Produces(MediaType.APPLICATION_JSON)
@@ -110,7 +110,7 @@ public class DocumentsResource {
     try {
       return backend.putXml(id, content).asResponse();
     } catch (ParsingException e) {
-      return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
+      return Response.status(BAD_REQUEST).entity(e.toString()).build();
     }
   }
 
