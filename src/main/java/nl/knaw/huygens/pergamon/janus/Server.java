@@ -7,29 +7,14 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.swagger.annotations.Api;
 import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
-import nl.knaw.huygens.pergamon.janus.xml.TaggedBytes;
-import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
-import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
-import nl.knaw.huygens.pergamon.janus.xml.TaggedUtf16;
-import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
-import nu.xom.Document;
-import nu.xom.ParsingException;
 import org.hibernate.validator.constraints.NotEmpty;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.function.Function;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
@@ -73,44 +58,6 @@ public class Server extends Application<Server.Config> {
     private SwaggerBundleConfiguration swaggerBundleConfiguration;
   }
 
-  @Api("demo")
-  @Path("/demo")
-  static class DemoResource {
-    @POST
-    @Consumes(MediaType.APPLICATION_XML)
-    @Path("transform")
-    public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") Server.OffsetType offsetType)
-      throws ParsingException, IOException {
-
-      return offsetType.transform(XmlParser.fromString(input));
-    }
-  }
-
-  private enum OffsetType {
-    BYTE(TaggedBytes::new),
-    UTF16(TaggedUtf16::new),
-    CODEPOINT(TaggedCodepoints::new);
-
-    private final Function<Document, TaggedText> transformer;
-
-    public static OffsetType fromString(String type) {
-      return OffsetType.valueOf(type.toUpperCase());
-    }
-
-    @Override
-    public String toString() {
-      return super.toString().toLowerCase();
-    }
-
-    OffsetType(Function<Document, TaggedText> transformer) {
-      this.transformer = transformer;
-    }
-
-    TaggedText transform(Document document) {
-      return transformer.apply(document);
-    }
-  }
-
   public static void main(String[] args) throws Exception {
     new Server().run(args);
   }
@@ -132,6 +79,8 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
+    environment.jersey().register(new DemoResource());
+
     final Backend backend = createBackend(configuration);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new DocumentsResource(backend));
