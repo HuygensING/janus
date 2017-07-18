@@ -82,6 +82,14 @@ public class DocumentsResource {
     return backend.putTxt(id, content).asResponse();
   }
 
+  @GET
+  @Path("{id}/xml")
+  @Produces(MediaType.APPLICATION_XML)
+  @ApiOperation(value = "Reconstruct XML representation of a document")
+  public Response getXml(@PathParam("id") String id) throws IOException {
+    return Backend.asResponse(backend.getXml(id));
+  }
+
   @POST
   @Path("/")
   @Consumes(MediaType.APPLICATION_XML)

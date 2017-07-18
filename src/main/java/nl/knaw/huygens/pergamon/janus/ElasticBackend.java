@@ -298,6 +298,10 @@ public class ElasticBackend implements Backend {
     }
     String text = (String) response.getSourceAsMap().get("body");
     List<Tag> tags = getTags(id);
+    if (tags.isEmpty()) {
+      // TODO turn this into a response with the right status code (bad request?)
+      throw new IllegalArgumentException("not originally an XML document");
+    }
 
     return new TaggedCodepoints(text, id, tags).reconstruct().toXML();
   }

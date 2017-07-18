@@ -16,15 +16,18 @@ public class TestTaggedCodepoints extends TestTaggedText {
     return new Tag(tag, tag, startCP, endCP, "", null);
   }
 
+  private static final String HEADER = "<?xml version=\"1.0\"?>\n";
+
+  private void test(String expect) {
+    String got = ((TaggedCodepoints) parse(expect)).reconstruct().toXML();
+    assertEquals(HEADER + expect + "\n", got);
+  }
+
   @Test
   public void reconstruct() {
-    String xml = "<?xml version=\"1.0\"?>\n<x><p><q /></p></x>\n";
-    assertEquals(xml, ((TaggedCodepoints) parse(xml)).reconstruct().toXML());
-
-    xml = "<?xml version=\"1.0\"?>\n<x><p /><q /></x>\n";
-    assertEquals(xml, ((TaggedCodepoints) parse(xml)).reconstruct().toXML());
-
-    xml = "<?xml version=\"1.0\"?>\n<p> hello <q>xml <r /> and json</q> world</p>\n";
-    assertEquals(xml, ((TaggedCodepoints) parse(xml)).reconstruct().toXML());
+    test("<x><p><q /></p></x>");
+    test("<x><p /><q /></x>");
+    test("<p> hello <q>xml <r /> and json</q> world</p>");
+    test("<p at=\"what?\" />");
   }
 }

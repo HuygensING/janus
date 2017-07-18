@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
+import nu.xom.Attribute;
 import nu.xom.Document;
 import nu.xom.Element;
 
@@ -66,6 +67,7 @@ public class TaggedCodepoints extends TaggedText {
     private Element apply(Tag root) {
       // Children are sorted by start.
       Element elem = new Element(root.tag);
+      root.attributes.forEach((k, v) -> elem.addAttribute(new Attribute(k, v)));
 
       for (Tag child : children.getOrDefault(root.id, emptyList())) {
         if (child.start > textIndex) {
