@@ -6,7 +6,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import java.util.TreeMap;
 
-// A full-blown annotation.
+/**
+ * An annotation on a document.
+ * <p>
+ * The document being annotated is called the target and referenced by its id.
+ * Optionally, an annotation may have a body, which is in turn a document,
+ * so that annotations can form links between documents.
+ */
 public class Annotation {
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
   public final Map<String, String> attributes = new TreeMap<>();
