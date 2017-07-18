@@ -37,6 +37,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.function.Function;
 
@@ -110,18 +111,42 @@ public class Server extends Application<Server.Config> {
     }
   }
 
-  @Api(value = "janus")
+  @Api(value = "annotations")
   @Produces(MediaType.APPLICATION_JSON)
-  @Path("/")
-  public static class Resource {
+  @Path("/annotations")
+  public static class AnnotationResource {
     private final Backend backend;
 
-    Resource(Backend backend) {
+    private AnnotationResource(Backend backend) {
+      this.backend = backend;
+    }
+
+    @POST
+    @Path("{id}/annotations")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
+    public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
+      if (ann.id != null) {
+        throw new IllegalArgumentException("annotation may not determine its own id");
+      }
+      ann.id = id;
+      return backend.putAnnotation(ann).asResponse();
+    }
+
+  }
+
+  @Api(value = "documents")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("/documents")
+  public static class DocumentResource {
+    private final Backend backend;
+
+    DocumentResource(Backend backend) {
       this.backend = backend;
     }
 
     @GET
-    @Path("documents/{id}")
+    @Path("{id}")
     @ApiOperation(value = "Gets a document and its annotations by id",
       response = DocAndAnnotations.class)
     @ApiResponses(value = {
@@ -136,7 +161,7 @@ public class Server extends Application<Server.Config> {
     }
 
     @GET
-    @Path("documents/{id}/annotations")
+    @Path("{id}/annotations")
     @ApiOperation(value = "Gets the annotations of a specific document by id",
       response = Annotation.class,
       responseContainer = "List"
@@ -155,29 +180,18 @@ public class Server extends Application<Server.Config> {
     }
 
     @POST
-    @Path("documents/{id}/annotations")
+    @Path("{id}/annotations")
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
-    public Response putAnnotation(Annotation ann)
-      throws IOException {
-      return putAnnotation(null, ann);
-    }
-
-    @POST
-    @Path("annotations/{id}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
-    public Response putAnnotation(@PathParam("id") String id, Annotation ann)
-      throws IOException {
+    public Response putAnnotation(Annotation ann) throws IOException {
       if (ann.id != null) {
         throw new IllegalArgumentException("annotation may not determine its own id");
       }
-      ann.id = id;
       return backend.putAnnotation(ann).asResponse();
     }
 
     @POST
-    @Path("documents")
+    @Path("/")
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml")
     public Response putTxt(String content) throws IOException {
@@ -185,7 +199,7 @@ public class Server extends Application<Server.Config> {
     }
 
     @PUT
-    @Path("documents/{id}")
+    @Path("{id}")
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "Add a document with a specific id", consumes = "text/plain, application/xml")
     public Response putTxt(@PathParam("id") String id, String content) throws IOException {
@@ -193,14 +207,14 @@ public class Server extends Application<Server.Config> {
     }
 
     @POST
-    @Path("documents")
+    @Path("/")
     @Consumes(MediaType.APPLICATION_XML)
     public Response putXml(String content) throws IOException {
       return putXml(null, content);
     }
 
     @PUT
-    @Path("documents/{id}")
+    @Path("{id}")
     @Consumes(MediaType.APPLICATION_XML)
     public Response putXml(@PathParam("id") String id, String content) throws IOException {
       try {
@@ -240,8 +254,13 @@ public class Server extends Application<Server.Config> {
   }
 
   @Override
-  public void run(Config config, Environment environment) throws Exception {
-    final Backend backend = new ElasticBackend(config.host, config.documentIndex, config.documentType);
-    environment.jersey().register(new Resource(backend));
+  public void run(Config configuration, Environment environment) throws Exception {
+    final Backend backend = createBackend(configuration);
+    environment.jersey().register(new AnnotationResource(backend));
+    environment.jersey().register(new DocumentResource(backend));
+  }
+
+  private ElasticBackend createBackend(Config configuration) throws UnknownHostException {
+    return new ElasticBackend(configuration.host, configuration.documentIndex, configuration.documentType);
   }
 }
