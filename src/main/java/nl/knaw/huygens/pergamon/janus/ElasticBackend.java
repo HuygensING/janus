@@ -100,6 +100,12 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
+  public Annotation getAnnotation(String id) {
+    GetResponse response = client.prepareGet(annotationIndex, annotationType, id).get();
+    return makeAnnotation(response.getSourceAsMap(), id);
+  }
+
+  @Override
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
     boolean isRoot = true;
     GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
@@ -143,6 +149,7 @@ public class ElasticBackend implements Backend {
 
       Annotation ann = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
         (String) map.get("tag"), null, (String) map.get("type"), hit.getId());
+      ann = makeAnnotation(map, hit.getId());
       copyAttributes(map, ann);
 
       return ann;
@@ -156,6 +163,13 @@ public class ElasticBackend implements Backend {
     }
 
     return result;
+  }
+
+  private static Annotation makeAnnotation(Map<String, Object> map, String id) {
+    Annotation r = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
+      (String) map.get("tag"), null, (String) map.get("type"), id);
+    copyAttributes(map, r);
+    return r;
   }
 
   // prepareIndex + setOpType(CREATE)

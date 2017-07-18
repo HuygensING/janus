@@ -9,6 +9,7 @@ import java.io.IOException;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 public class TestElasticBackend {
@@ -46,7 +47,7 @@ public class TestElasticBackend {
   }
 
   @Test
-  public void putTxtAndAnnotation() throws IOException {
+  public void txtAndAnnotation() throws Exception {
     Backend.PutResult result = backend.putTxt("some_id", "some text");
     assertEquals(201, result.status);
     assertEquals("some_id", result.id);
@@ -56,14 +57,24 @@ public class TestElasticBackend {
 
     result = backend.putAnnotation(new Annotation(0, 4, "some_id", "note", null, "test", null));
     assertEquals(201, result.status);
+
+    sleep(500);
+
+    DocAndAnnotations dAndA = backend.getWithAnnotations("some_id", true);
+    assertEquals("some text", dAndA.text);
+    assertEquals(1, dAndA.annotations.size());
+
+    String annId = dAndA.annotations.get(0).id;
+    Annotation ann = backend.getAnnotation(annId);
+    assertNotNull(ann);
   }
 
   @Test
-  public void putXml() throws Exception {
+  public void xml() throws Exception {
     Backend.PutResult result = backend.putXml("blabla!", "<msg>hello, <xml/> world!</msg>");
     assertEquals(201, result.status);
 
-    sleep(1000); // ES may handle get before document is properly indexed
+    sleep(500); // ES may handle get before document is properly indexed
 
     DocAndAnnotations doc = backend.getWithAnnotations(result.id, true);
     assertEquals("hello,  world!", doc.text);

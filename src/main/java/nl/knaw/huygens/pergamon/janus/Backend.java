@@ -35,6 +35,11 @@ public interface Backend extends AutoCloseable {
   }
 
   /**
+   * Get the single annotation with the given id.
+   */
+  Annotation getAnnotation(String id);
+
+  /**
    * Get annotations belong to id, optionally satisfying the query string q.
    * <p>
    * If recursive, get annotations on annotations as well.
