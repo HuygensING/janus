@@ -70,7 +70,7 @@ import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
-  public static class Config extends Configuration {
+  static class Config extends Configuration {
     @JsonProperty
     private String host = "localhost";
 
