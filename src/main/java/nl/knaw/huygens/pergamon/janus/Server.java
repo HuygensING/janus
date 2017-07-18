@@ -8,10 +8,6 @@ import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
@@ -27,25 +23,16 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.function.Function;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
-import static javax.ws.rs.core.Response.Status.UNSUPPORTED_MEDIA_TYPE;
 
 /**
  * Web server.
@@ -86,6 +73,19 @@ public class Server extends Application<Server.Config> {
     private SwaggerBundleConfiguration swaggerBundleConfiguration;
   }
 
+  @Api("demo")
+  @Path("/demo")
+  static class DemoResource {
+    @POST
+    @Consumes(MediaType.APPLICATION_XML)
+    @Path("transform")
+    public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") Server.OffsetType offsetType)
+      throws ParsingException, IOException {
+
+      return offsetType.transform(XmlParser.fromString(input));
+    }
+  }
+
   private enum OffsetType {
     BYTE(TaggedBytes::new),
     UTF16(TaggedUtf16::new),
@@ -111,129 +111,6 @@ public class Server extends Application<Server.Config> {
     }
   }
 
-  @Api(value = "annotations")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Path("/annotations")
-  public static class AnnotationResource {
-    private final Backend backend;
-
-    private AnnotationResource(Backend backend) {
-      this.backend = backend;
-    }
-
-    @POST
-    @Path("{id}/annotations")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
-    public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
-      if (ann.id != null) {
-        throw new IllegalArgumentException("annotation may not determine its own id");
-      }
-      ann.id = id;
-      return backend.putAnnotation(ann).asResponse();
-    }
-
-  }
-
-  @Api(value = "documents")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Path("/documents")
-  public static class DocumentResource {
-    private final Backend backend;
-
-    DocumentResource(Backend backend) {
-      this.backend = backend;
-    }
-
-    @GET
-    @Path("{id}")
-    @ApiOperation(value = "Gets a document and its annotations by id",
-      response = DocAndAnnotations.class)
-    @ApiResponses(value = {
-      @ApiResponse(code = 404, message = "Document not found")
-    })
-    public Response get(@ApiParam(value = "document ID") @PathParam("id") String id) throws IOException {
-      DocAndAnnotations result = backend.getWithAnnotations(id, true);
-      if (result == null) {
-        return Response.status(NOT_FOUND).build();
-      }
-      return Response.status(OK).entity(result).build();
-    }
-
-    @GET
-    @Path("{id}/annotations")
-    @ApiOperation(value = "Gets the annotations of a specific document by id",
-      response = Annotation.class,
-      responseContainer = "List"
-    )
-    public Response getAnnotations(@PathParam("id") String id,
-                                   @ApiParam("Recursively get annotations on annotations also")
-                                   @QueryParam("recursive") @DefaultValue("true") boolean recursive,
-                                   @ApiParam(value = "Lucene style query string")
-                                   @QueryParam("q") String query) {
-      List<Annotation> result = backend.getAnnotations(id, query, recursive);
-      // TODO distinguish between id not found (404) and no annotations for id (empty list)
-      if (result.isEmpty()) {
-        return Response.status(NOT_FOUND).build();
-      }
-      return Response.status(OK).entity(result).build();
-    }
-
-    @POST
-    @Path("{id}/annotations")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
-    public Response putAnnotation(Annotation ann) throws IOException {
-      if (ann.id != null) {
-        throw new IllegalArgumentException("annotation may not determine its own id");
-      }
-      return backend.putAnnotation(ann).asResponse();
-    }
-
-    @POST
-    @Path("/")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml")
-    public Response putTxt(String content) throws IOException {
-      return putTxt(null, content);
-    }
-
-    @PUT
-    @Path("{id}")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @ApiOperation(value = "Add a document with a specific id", consumes = "text/plain, application/xml")
-    public Response putTxt(@PathParam("id") String id, String content) throws IOException {
-      return backend.putTxt(id, content).asResponse();
-    }
-
-    @POST
-    @Path("/")
-    @Consumes(MediaType.APPLICATION_XML)
-    public Response putXml(String content) throws IOException {
-      return putXml(null, content);
-    }
-
-    @PUT
-    @Path("{id}")
-    @Consumes(MediaType.APPLICATION_XML)
-    public Response putXml(@PathParam("id") String id, String content) throws IOException {
-      try {
-        return backend.putXml(id, content).asResponse();
-      } catch (ParsingException e) {
-        return Response.status(UNSUPPORTED_MEDIA_TYPE).entity(e.toString()).build();
-      }
-    }
-
-    @POST
-    @Consumes(MediaType.APPLICATION_XML)
-    @Path("demo/transform")
-    public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
-      throws ParsingException, IOException {
-
-      return offsetType.transform(XmlParser.fromString(input));
-    }
-  }
-
   public static void main(String[] args) throws Exception {
     new Server().run(args);
   }
@@ -256,8 +133,8 @@ public class Server extends Application<Server.Config> {
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
     final Backend backend = createBackend(configuration);
-    environment.jersey().register(new AnnotationResource(backend));
-    environment.jersey().register(new DocumentResource(backend));
+    environment.jersey().register(new AnnotationsResource(backend));
+    environment.jersey().register(new DocumentsResource(backend));
   }
 
   private ElasticBackend createBackend(Config configuration) throws UnknownHostException {
