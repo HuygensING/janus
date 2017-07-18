@@ -69,15 +69,19 @@ public class DocumentsResource {
   @POST
   @Path("/")
   @Consumes(MediaType.TEXT_PLAIN)
-  @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml")
+  @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml", notes = XML_NOTES)
   public Response putTxt(String content) throws IOException {
     return putTxt(null, content);
   }
 
+  private static final String XML_NOTES =
+    "If the Content-Type is application/xml, it will be broken into text + one annotation per tag (see README).";
+
   @PUT
   @Path("{id}")
   @Consumes(MediaType.TEXT_PLAIN)
-  @ApiOperation(value = "Add a document with a specific id", consumes = "text/plain, application/xml")
+  @ApiOperation(value = "Add a document with a specific id", notes = XML_NOTES,
+    consumes = "text/plain, application/xml")
   public Response putTxt(@PathParam("id") String id, String content) throws IOException {
     return backend.putTxt(id, content).asResponse();
   }
@@ -85,7 +89,9 @@ public class DocumentsResource {
   @GET
   @Path("{id}/xml")
   @Produces(MediaType.APPLICATION_XML)
-  @ApiOperation(value = "Reconstruct XML representation of a document")
+  @ApiOperation(value = "Reconstruct XML representation of a document",
+    notes = "Only works for documents that were originally uploaded as XML and " +
+      "only annotations deriving from tags are included.")
   public Response getXml(@PathParam("id") String id) throws IOException {
     return Backend.asResponse(backend.getXml(id));
   }

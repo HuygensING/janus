@@ -1,6 +1,7 @@
 package nl.knaw.huygens.pergamon.janus;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedBytes;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
@@ -46,10 +47,15 @@ public class SandboxResource {
     }
   }
 
+  private static final String XML_NOTES =
+    "The document will be broken into text + one annotation per tag (see README). " +
+      "Nothing is stored. All identifiers in the result are fake.";
+
   @POST
   @Consumes(MediaType.APPLICATION_XML)
-  @Path("transform")
-  public TaggedText transform(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
+  @Path("transformxml")
+  @ApiOperation(value = "Perform XML transformation", notes = XML_NOTES)
+  public TaggedText transformXml(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
     throws ParsingException, IOException {
 
     return offsetType.transform(XmlParser.fromString(input));
