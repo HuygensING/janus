@@ -58,7 +58,8 @@ public class TaggedCodepoints extends TaggedText {
 
   private class Reconstruction {
     private Map<String, List<Tag>> children;
-    private int textIndex;
+    private int cpIndex = 0; // code point index
+    private int sbIndex = 0; // index into StringBuilder
 
     Reconstruction(Map<String, List<Tag>> children) {
       this.children = children;
@@ -70,17 +71,20 @@ public class TaggedCodepoints extends TaggedText {
       root.attributes.forEach((k, v) -> elem.addAttribute(new Attribute(k, v)));
 
       for (Tag child : children.getOrDefault(root.id, emptyList())) {
-        if (child.start > textIndex) {
-          // TODO use codepoints
-          elem.appendChild(sb.substring(textIndex, child.start));
-          textIndex = child.start;
+        if (child.start > sbIndex) {
+          int end = sb.offsetByCodePoints(sbIndex, child.start - cpIndex);
+          elem.appendChild(sb.substring(sbIndex, end));
+          cpIndex = child.start;
+          sbIndex = end;
         }
 
         elem.appendChild(apply(child));
       }
-      if (textIndex < root.end) {
-        elem.appendChild(sb.substring(textIndex, root.end));
-        textIndex = root.end;
+      if (sbIndex < root.end) {
+        int end = sb.offsetByCodePoints(sbIndex, root.end - cpIndex);
+        elem.appendChild(sb.substring(sbIndex, end));
+        cpIndex = root.end;
+        sbIndex = end;
       }
 
       return elem;

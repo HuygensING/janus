@@ -29,5 +29,6 @@ public class TestTaggedCodepoints extends TestTaggedText {
     test("<x><p /><q /></x>");
     test("<p> hello <q>xml <r /> and json</q> world</p>");
     test("<p at=\"what?\" />");
+    test("<tricky>\uD834\uDD20<a />\uD834\uDD20 got through! </tricky>");
   }
 }
