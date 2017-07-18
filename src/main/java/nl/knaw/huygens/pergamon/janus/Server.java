@@ -79,7 +79,7 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
-    environment.jersey().register(new DemoResource());
+    environment.jersey().register(new SandboxResource());
 
     final Backend backend = createBackend(configuration);
     environment.jersey().register(new AnnotationsResource(backend));

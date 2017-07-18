@@ -18,9 +18,9 @@ import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.util.function.Function;
 
-@Api("demo")
-@Path("/demo")
-public class DemoResource {
+@Api("sandbox")
+@Path("/sandbox")
+public class SandboxResource {
   private enum OffsetType {
     BYTE(TaggedBytes::new),
     UTF16(TaggedUtf16::new),
