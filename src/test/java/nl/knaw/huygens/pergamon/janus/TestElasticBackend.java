@@ -82,4 +82,11 @@ public class TestElasticBackend {
     assertEquals("msg", doc.annotations.get(0).tag);
     assertEquals("xml", doc.annotations.get(1).tag);
   }
+
+  @Test
+  public void xmlNullId() throws Exception {
+    Backend.PutResult result = backend.putXml(null, "<hello>world</hello>");
+    assertEquals(201, result.status);
+    assertNotNull(result.id);
+  }
 }

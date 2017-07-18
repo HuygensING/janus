@@ -25,10 +25,13 @@ public abstract class TaggedText {
   final StringBuilder sb;
 
   TaggedText(Document doc) {
-    this(doc, UUID.randomUUID().toString());
+    this(doc, null);
   }
 
   TaggedText(Document doc, String docId) {
+    if (docId == null) {
+      docId = UUID.randomUUID().toString();
+    }
     this.docId = docId;
     tags = new ArrayList<>();
     sb = new StringBuilder();
