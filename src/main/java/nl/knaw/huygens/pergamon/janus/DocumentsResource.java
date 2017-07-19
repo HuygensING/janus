@@ -19,16 +19,21 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 
-@Api("documents")
+@Api(DocumentsResource.PATH)
+@Path(DocumentsResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
-@Path("/documents")
 public class DocumentsResource {
+  static final String PATH = "documents";
+
+  private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
+
   private final Backend backend;
 
   DocumentsResource(Backend backend) {
@@ -77,7 +82,7 @@ public class DocumentsResource {
     if (ann.id != null) {
       throw new IllegalArgumentException("annotation may not determine its own id");
     }
-    return backend.putAnnotation(ann).asResponse();
+    return responseBuilder.forResult(backend.putAnnotation(ann)).build();
   }
 
   @POST
@@ -99,8 +104,12 @@ public class DocumentsResource {
   @POST
   @Path("/")
   @Consumes(MediaType.APPLICATION_XML)
-  public Response putXml(String content) throws IOException {
-    return putXml(null, content);
+  public Response putXml(String content) throws IOException, URISyntaxException {
+    try {
+      return responseBuilder.forResult(backend.putXml(null, content)).build();
+    } catch (ParsingException e) {
+      return Response.status(BAD_REQUEST).entity(e.toString()).build();
+    }
   }
 
   @PUT
