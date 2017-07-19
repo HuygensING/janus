@@ -39,13 +39,9 @@ public class AnnotationsResource {
   @POST
   @Path("{id}/annotations")
   @Consumes(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Add an annotation to a specific annotation", response = Backend.PutResult.class)
+  @ApiOperation(value = "Add an annotation on an annotation", response = Backend.PutResult.class)
   public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
-    if (ann.id != null) {
-      throw new IllegalArgumentException("annotation may not determine its own id");
-    }
-    ann.id = id;
-    return backend.putAnnotation(ann).asResponse();
+    return backend.putAnnotation(id, ann).asResponse();
   }
 
 }
