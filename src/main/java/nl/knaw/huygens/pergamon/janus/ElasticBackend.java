@@ -333,6 +333,7 @@ public class ElasticBackend implements Backend {
     }).collect(Collectors.toList());
   }
 
+  @SuppressWarnings("unchecked")
   private static void copyAttributes(Map<String, Object> map, Annotation ann) {
     ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
   }
