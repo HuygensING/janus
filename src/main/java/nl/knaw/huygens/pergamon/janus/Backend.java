@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -86,6 +87,21 @@ public interface Backend extends AutoCloseable {
    */
   String getXml(String id) throws IOException;
 
+  default PutResult putAnnotation(@Nullable String target, Annotation ann) throws IOException {
+    if (ann.id != null) {
+      return new PutResult(ann.id, BAD_REQUEST, "annotation may not determine its own id");
+    }
+    if (target != null && !Objects.equals(target, ann.target)) {
+      return new PutResult(null, BAD_REQUEST,
+        String.format("target mismatch: '%s' in path, '%s' in annotation", target, ann.target));
+    }
+    ann.target = target;
+    return putAnnotation(ann);
+  }
+
+  /**
+   * Stores the annotation ann, which must have its target set.
+   */
   PutResult putAnnotation(Annotation ann) throws IOException;
 
   PutResult putTxt(@Nullable String id, String content) throws IOException;

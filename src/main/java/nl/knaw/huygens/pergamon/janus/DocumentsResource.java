@@ -65,11 +65,8 @@ public class DocumentsResource {
   @Path("{id}/annotations")
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
-  public Response putAnnotation(Annotation ann) throws IOException {
-    if (ann.id != null) {
-      throw new IllegalArgumentException("annotation may not determine its own id");
-    }
-    return responseBuilder.forResult(backend.putAnnotation(ann)).build();
+  public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
+    return responseBuilder.forResult(backend.putAnnotation(id, ann)).build();
   }
 
   @POST

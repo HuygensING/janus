@@ -37,7 +37,7 @@ public class Annotation {
    * id of annotated document or annotation.
    */
   @JsonProperty
-  public final String target;
+  public String target;
 
   @JsonProperty
   public final String type;
