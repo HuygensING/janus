@@ -27,6 +27,8 @@ public class DocumentsResource {
   static final String PATH = "documents";
 
   private static final String DOCUMENT_ID = "document ID";
+  private static final String XML_NOTES =
+    "If the Content-Type is application/xml, it will be broken into text + one annotation per tag (see README).";
 
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
@@ -77,9 +79,6 @@ public class DocumentsResource {
   public Response putTxt(String content) throws IOException {
     return putTxt(null, content);
   }
-
-  private static final String XML_NOTES =
-    "If the Content-Type is application/xml, it will be broken into text + one annotation per tag (see README).";
 
   @PUT
   @Path("{id}")
