@@ -18,7 +18,6 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 
 @Api(DocumentsResource.PATH)
@@ -102,7 +101,7 @@ public class DocumentsResource {
   @POST
   @Path("/")
   @Consumes(MediaType.APPLICATION_XML)
-  public Response putXml(String content) throws IOException, URISyntaxException {
+  public Response putXml(String content) throws IOException {
     return responseBuilder.forResult(backend.putXml(null, content)).build();
   }
 
