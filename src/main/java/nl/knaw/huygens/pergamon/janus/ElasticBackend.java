@@ -207,6 +207,7 @@ public class ElasticBackend implements Backend {
                      .field("end", ann.end)
                      .field("attrib", ann.attributes)
                      .field("body", ann.body)
+                     .field("tag", ann.tag)
                      // XXX hard-wire type to something like "user"?
                      .field("type", ann.type)
                      .field("target", ann.target)

@@ -67,6 +67,8 @@ public class TestElasticBackend {
     String annId = dAndA[0].annotations.get(0).id;
     Annotation ann = backend.getAnnotation(annId);
     assertNotNull(ann);
+    assertEquals("note", ann.tag);
+    assertEquals("note", dAndA[0].annotations.get(0).tag);
   }
 
   @Test
