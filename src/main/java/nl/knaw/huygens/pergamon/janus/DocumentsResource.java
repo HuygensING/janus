@@ -26,6 +26,8 @@ import java.io.IOException;
 public class DocumentsResource {
   static final String PATH = "documents";
 
+  private static final String DOCUMENT_ID = "document ID";
+
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
   private final Backend backend;
@@ -41,7 +43,7 @@ public class DocumentsResource {
   @ApiResponses(value = {
     @ApiResponse(code = 404, message = "Document not found")
   })
-  public Response get(@ApiParam(value = "document ID") @PathParam("id") String id) throws IOException {
+  public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) throws IOException {
     return Backend.asResponse(backend.getWithAnnotations(id, true));
   }
 
@@ -64,7 +66,7 @@ public class DocumentsResource {
   @Path("{id}/annotations")
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
-  public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
+  public Response putAnnotation(@ApiParam(DOCUMENT_ID) @PathParam("id") String id, Annotation ann) throws IOException {
     return responseBuilder.forResult(backend.putAnnotation(id, ann)).build();
   }
 
