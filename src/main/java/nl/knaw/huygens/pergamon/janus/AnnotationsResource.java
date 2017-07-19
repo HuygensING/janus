@@ -15,10 +15,15 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
-@Api("annotations")
+@Api(AnnotationsResource.PATH)
+@Path(AnnotationsResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
-@Path("/annotations")
 public class AnnotationsResource {
+  static final String PATH = "annotations";
+
+  // TODO: use me when new anno is created to set Location header
+  private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
+
   private final Backend backend;
 
   AnnotationsResource(Backend backend) {

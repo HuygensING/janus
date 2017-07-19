@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import nu.xom.ParsingException;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -18,11 +19,19 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
-@Api("documents")
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+
+
+@Api(DocumentsResource.PATH)
+@Path(DocumentsResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
-@Path("/documents")
 public class DocumentsResource {
+  static final String PATH = "documents";
+
+  private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
+
   private final Backend backend;
 
   DocumentsResource(Backend backend) {
@@ -63,7 +72,7 @@ public class DocumentsResource {
     if (ann.id != null) {
       throw new IllegalArgumentException("annotation may not determine its own id");
     }
-    return backend.putAnnotation(ann).asResponse();
+    return responseBuilder.forResult(backend.putAnnotation(ann)).build();
   }
 
   @POST
@@ -99,8 +108,8 @@ public class DocumentsResource {
   @POST
   @Path("/")
   @Consumes(MediaType.APPLICATION_XML)
-  public Response putXml(String content) throws IOException {
-    return putXml(null, content);
+  public Response putXml(String content) throws IOException, URISyntaxException {
+      return responseBuilder.forResult(backend.putXml(null, content)).build();
   }
 
   @PUT
