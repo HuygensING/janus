@@ -5,7 +5,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
-import nu.xom.ParsingException;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -20,8 +19,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 
 
 @Api(DocumentsResource.PATH)
@@ -109,7 +106,7 @@ public class DocumentsResource {
   @Path("/")
   @Consumes(MediaType.APPLICATION_XML)
   public Response putXml(String content) throws IOException, URISyntaxException {
-      return responseBuilder.forResult(backend.putXml(null, content)).build();
+    return responseBuilder.forResult(backend.putXml(null, content)).build();
   }
 
   @PUT
