@@ -21,7 +21,6 @@ import java.io.IOException;
 public class AnnotationsResource {
   static final String PATH = "annotations";
 
-  // TODO: use me when new anno is created to set Location header
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
   private final Backend backend;
@@ -46,7 +45,7 @@ public class AnnotationsResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Add an annotation on an annotation", response = Backend.PutResult.class)
   public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
-    return backend.putAnnotation(id, ann).asResponse();
+    return responseBuilder.forResult(backend.putAnnotation(id, ann)).build();
   }
 
 }
