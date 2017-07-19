@@ -7,7 +7,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
@@ -58,13 +57,14 @@ public class TestElasticBackend {
     result = backend.putAnnotation(new Annotation(0, 4, "some_id", "note", null, "test", null));
     assertEquals(201, result.status);
 
-    sleep(500);
+    DocAndAnnotations[] dAndA = new DocAndAnnotations[1];
+    retry(3, 300, () -> {
+      dAndA[0] = backend.getWithAnnotations("some_id", true);
+      assertEquals("some text", dAndA[0].text);
+      assertEquals(1, dAndA[0].annotations.size());
+    });
 
-    DocAndAnnotations dAndA = backend.getWithAnnotations("some_id", true);
-    assertEquals("some text", dAndA.text);
-    assertEquals(1, dAndA.annotations.size());
-
-    String annId = dAndA.annotations.get(0).id;
+    String annId = dAndA[0].annotations.get(0).id;
     Annotation ann = backend.getAnnotation(annId);
     assertNotNull(ann);
   }
@@ -74,13 +74,14 @@ public class TestElasticBackend {
     Backend.PutResult result = backend.putXml("blabla!", "<msg>hello, <xml/> world!</msg>");
     assertEquals(201, result.status);
 
-    sleep(500); // ES may handle get before document is properly indexed
-
-    DocAndAnnotations doc = backend.getWithAnnotations(result.id, true);
-    assertEquals("hello,  world!", doc.text);
-    assertEquals(2, doc.annotations.size());
-    assertEquals("msg", doc.annotations.get(0).tag);
-    assertEquals("xml", doc.annotations.get(1).tag);
+    DocAndAnnotations[] doc = new DocAndAnnotations[1];
+    retry(3, 300, () -> {
+      doc[0] = backend.getWithAnnotations(result.id, true);
+      assertEquals("hello,  world!", doc[0].text);
+      assertEquals(2, doc[0].annotations.size());
+    });
+    assertEquals("msg", doc[0].annotations.get(0).tag);
+    assertEquals("xml", doc[0].annotations.get(1).tag);
   }
 
   @Test
@@ -88,5 +89,22 @@ public class TestElasticBackend {
     Backend.PutResult result = backend.putXml(null, "<hello>world</hello>");
     assertEquals(201, result.status);
     assertNotNull(result.id);
+  }
+
+  private interface Assertion {
+    void run() throws Exception;
+  }
+
+  // Retries an assertion at most repeats times, sleeping millis in between.
+  private static void retry(int repeats, long millis, Assertion assertion) throws Exception {
+    for (int i = 0; i < repeats - 1; i++) {
+      try {
+        assertion.run();
+        break;
+      } catch (AssertionError e) {
+        Thread.sleep(millis);
+      }
+    }
+    assertion.run();
   }
 }
