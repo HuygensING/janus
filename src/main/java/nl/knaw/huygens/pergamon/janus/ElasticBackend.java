@@ -144,16 +144,9 @@ public class ElasticBackend implements Backend {
                                     // TODO: should we scroll, or should the client scroll?
                                     .setSize(1000).get();
 
-    List<Annotation> hits = Arrays.stream(response.getHits().getHits()).map(hit -> {
-      Map<String, Object> map = hit.getSourceAsMap();
-
-      Annotation ann = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
-        (String) map.get("tag"), null, (String) map.get("type"), hit.getId());
-      ann = makeAnnotation(map, hit.getId());
-      copyAttributes(map, ann);
-
-      return ann;
-    }).collect(Collectors.toList());
+    List<Annotation> hits = Arrays.stream(response.getHits().getHits())
+                                  .map(hit -> makeAnnotation(hit.getSourceAsMap(), hit.getId()))
+                                  .collect(Collectors.toList());
     result.addAll(hits);
 
     // If id is a root (a document), searching for the "root" attribute
