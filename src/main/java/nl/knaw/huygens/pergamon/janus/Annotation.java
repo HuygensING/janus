@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
+
+import static java.util.Collections.emptyMap;
 
 /**
  * An annotation on a document.
@@ -47,6 +50,11 @@ public class Annotation {
   }
 
   public Annotation(int start, int end, String target, String tag, String body, String type, String id) {
+    this(start, end, target, tag, body, type, id, emptyMap());
+  }
+
+  Annotation(int start, int end, String target, String tag, String body, String type, String id,
+             Map<String, String> attributes) {
     this.start = start;
     this.end = end;
     this.target = target;
@@ -54,5 +62,25 @@ public class Annotation {
     this.tag = tag;
     this.type = type;
     this.id = id;
+    attributes.forEach(this.attributes::put);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Annotation that = (Annotation) o;
+    return start == that.start &&
+      end == that.end &&
+      Objects.equals(attributes, that.attributes) &&
+      Objects.equals(id, that.id) &&
+      Objects.equals(body, that.body) &&
+      Objects.equals(tag, that.tag) &&
+      Objects.equals(target, that.target) &&
+      Objects.equals(type, that.type);
   }
 }

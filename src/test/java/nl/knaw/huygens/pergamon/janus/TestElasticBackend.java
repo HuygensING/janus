@@ -1,11 +1,13 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -54,26 +56,30 @@ public class TestElasticBackend {
     result = backend.putTxt("some_id", "some other text");
     assertEquals(409, result.status);
 
-    result = backend.putAnnotation(new Annotation(0, 4, "some_id", "note", null, "test", null));
+    Annotation ann = new Annotation(0, 4, "some_id", "note", null, "test", null);
+    result = backend.putAnnotation(ann);
     assertEquals(201, result.status);
 
-    DocAndAnnotations[] dAndA = new DocAndAnnotations[1];
     retry(3, 300, () -> {
-      dAndA[0] = backend.getWithAnnotations("some_id", true);
-      assertEquals("some text", dAndA[0].text);
-      assertEquals(1, dAndA[0].annotations.size());
-    });
+      DocAndAnnotations dAndA = backend.getWithAnnotations("some_id", true);
+      assertEquals("some text", dAndA.text);
+      assertEquals(1, dAndA.annotations.size());
 
-    String annId = dAndA[0].annotations.get(0).id;
-    Annotation ann = backend.getAnnotation(annId);
-    assertNotNull(ann);
-    assertEquals("note", ann.tag);
-    assertEquals("note", dAndA[0].annotations.get(0).tag);
+      String annId = dAndA.annotations.get(0).id;
+      ann.id = annId;
+      Annotation got = backend.getAnnotation(annId);
+      assertEquals(ann, got);
+      assertEquals("note", got.tag);
+      assertEquals("note", dAndA.annotations.get(0).tag);
+    });
   }
 
   @Test
   public void xml() throws Exception {
-    Backend.PutResult result = backend.putXml("blabla!", "<msg>hello, <xml/> world!</msg>");
+    String docId = "blabla!";
+    String text = "<msg num=\"1\">hello, <xml num=\"2\" attr=\"extra\"/> world!</msg>";
+
+    Backend.PutResult result = backend.putXml(docId, text);
     assertEquals(201, result.status);
 
     DocAndAnnotations[] doc = new DocAndAnnotations[1];
@@ -82,8 +88,13 @@ public class TestElasticBackend {
       assertEquals("hello,  world!", doc[0].text);
       assertEquals(2, doc[0].annotations.size());
     });
-    assertEquals("msg", doc[0].annotations.get(0).tag);
-    assertEquals("xml", doc[0].annotations.get(1).tag);
+
+    List<Annotation> ann = doc[0].annotations;
+    assertEquals(new Annotation(0, 14, docId, "msg", null, "tag", ann.get(0).id, ImmutableMap.of("num", "1")),
+      ann.get(0));
+    assertEquals(new Annotation(7, 7, docId, "xml", null, "tag", ann.get(1).id,
+        ImmutableMap.of("num", "2", "attr", "extra")),
+      ann.get(1));
   }
 
   @Test
