@@ -123,8 +123,12 @@ public class TestElasticBackend {
     assertNotNull(docId);
 
     Annotation ann = new Annotation(6431, 121261, docId, "withattr", null, "test", null,
-      ImmutableMap.of("key", "value", "nested.key", "nested.value"
+      ImmutableMap.of("key", "value"
+        , "nested.key", "nested.value" // nested according to Elasticsearch, Janus doesn't care
+        , "deeply.nested.key", "deeply.nested.value"
+        , " foo .bar ", " baz  . quux "
         // TODO broken because of Elasticsearch mapping:
+        // , " ", " "
         // , "..", "..."
         // , "", ""
       ));
