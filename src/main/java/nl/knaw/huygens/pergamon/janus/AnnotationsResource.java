@@ -2,18 +2,22 @@ package nl.knaw.huygens.pergamon.janus;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.List;
 
 @Api(AnnotationsResource.PATH)
 @Path(AnnotationsResource.PATH)
@@ -38,6 +42,16 @@ public class AnnotationsResource {
   })
   public Response get(@PathParam("id") String id) {
     return Backend.asResponse(backend.getAnnotation(id));
+  }
+
+  @GET
+  @Path("{id}/annotations")
+  @ApiOperation(value = "Get all annotations on a given annotation",
+    response = Annotation.class, responseContainer = "List")
+  public List<Annotation> getAnnotations(@PathParam("id") String id,
+                                         @ApiParam("recursively get annotation on the annotations")
+                                         @QueryParam("recursive") @DefaultValue("true") boolean recursive) {
+    return backend.getAnnotations(id, null, recursive);
   }
 
   @POST
