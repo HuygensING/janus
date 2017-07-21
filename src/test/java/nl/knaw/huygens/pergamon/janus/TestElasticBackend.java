@@ -126,6 +126,24 @@ public class TestElasticBackend {
   }
 
   @Test
+  public void attributes() throws Exception {
+    String docId = backend.putTxt(null, "don't care").id;
+    assertNotNull(docId);
+
+    Annotation ann = new Annotation(6431, 121261, docId, "withattr", null, "test", null,
+      ImmutableMap.of("key", "value", "nested.key", "nested.value"
+        // TODO broken because of Elasticsearch mapping:
+        // , "..", "..."
+        // , "", ""
+      ));
+    ann.id = backend.putAnnotation(ann).id;
+
+    Annotation got = retry(7, 200, () -> backend.getAnnotation(ann.id));
+
+    assertEquals(ann, got);
+  }
+
+  @Test
   public void xmlNullId() throws Exception {
     Backend.PutResult result = backend.putXml(null, "<hello>world</hello>");
     assertEquals(201, result.status);
