@@ -60,7 +60,7 @@ public class TestElasticBackend {
     result = backend.putAnnotation(ann);
     assertEquals(201, result.status);
 
-    retry(3, 300, () -> {
+    retry(() -> {
       DocAndAnnotations dAndA = backend.getWithAnnotations("some_id", true);
       assertEquals("some text", dAndA.text);
       assertEquals(1, dAndA.annotations.size());
@@ -71,8 +71,6 @@ public class TestElasticBackend {
       assertEquals(ann, got);
       assertEquals("note", got.tag);
       assertEquals("note", dAndA.annotations.get(0).tag);
-
-      return null;
     });
   }
 
@@ -84,7 +82,7 @@ public class TestElasticBackend {
     Backend.PutResult result = backend.putXml(docId, text);
     assertEquals(201, result.status);
 
-    DocAndAnnotations doc = retry(3, 300, () -> {
+    DocAndAnnotations doc = retry(() -> {
       DocAndAnnotations d = backend.getWithAnnotations(result.id, true);
       assertEquals("hello,  world!", d.text);
       assertEquals(2, d.annotations.size());
@@ -105,24 +103,18 @@ public class TestElasticBackend {
     assertNotNull(docId);
 
     Annotation ann1 = new Annotation(0, 21, docId, "level1", null, "test", null);
-    String annId1 = retry(7, 200, () -> {
-      Backend.PutResult result = backend.putAnnotation(ann1);
-      assertEquals(result.status, 201);
-      assertNotNull(result.id);
-      return result.id;
-    });
-    ann1.id = annId1;
+    Backend.PutResult result = backend.putAnnotation(ann1);
+    assertEquals(result.status, 201);
+    assertNotNull(result.id);
+    ann1.id = result.id;
 
-    Annotation ann2 = new Annotation(0, 0, annId1, "level2", null, "test", null);
-    String annId2 = retry(7, 200, () -> {
-      String id = backend.putAnnotation(ann2).id;
-      assertNotNull(id);
-      return id;
-    });
-    ann2.id = annId2;
+    Annotation ann2 = new Annotation(0, 0, ann1.id, "level2", null, "test", null);
+    result = backend.putAnnotation(ann2);
+    assertNotNull(result.id);
+    ann2.id = result.id;
 
-    assertEquals(ann1, backend.getAnnotation(annId1));
-    assertEquals(ann2, backend.getAnnotation(annId2));
+    retry(() -> assertEquals(ann1, backend.getAnnotation(ann1.id)));
+    retry(() -> assertEquals(ann2, backend.getAnnotation(ann2.id)));
   }
 
   @Test
@@ -138,9 +130,10 @@ public class TestElasticBackend {
       ));
     ann.id = backend.putAnnotation(ann).id;
 
-    Annotation got = retry(7, 200, () -> backend.getAnnotation(ann.id));
-
-    assertEquals(ann, got);
+    retry(() -> {
+      Annotation got = backend.getAnnotation(ann.id);
+      assertEquals(ann, got);
+    });
   }
 
   @Test
@@ -155,15 +148,29 @@ public class TestElasticBackend {
     T run() throws Exception;
   }
 
+  private interface VoidAssertion<T> {
+    void run() throws Exception;
+  }
+
+  private static int REPEATS = 7;
+  private static long WAIT = 300; // milliseconds
+
   // Retries an assertion at most repeats times, sleeping millis in between.
-  private static <T> T retry(int repeats, long millis, Assertion<T> assertion) throws Exception {
-    for (int i = 1; i < repeats; i++) {
+  private static <T> T retry(Assertion<T> assertion) throws Exception {
+    for (int i = 1; i < REPEATS; i++) {
       try {
         return assertion.run();
       } catch (AssertionError e) {
-        Thread.sleep(millis);
+        Thread.sleep(WAIT);
       }
     }
     return assertion.run();
+  }
+
+  private static void retry(VoidAssertion assertion) throws Exception {
+    retry(() -> {
+      assertion.run();
+      return null;
+    });
   }
 }
