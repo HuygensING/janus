@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
@@ -89,7 +90,12 @@ public class ElasticBackend implements Backend {
 
     int colon = addr.lastIndexOf(':');
     if (colon >= 0) {
-      port = Integer.parseInt(addr.substring(colon + 1));
+      try {
+        port = Integer.parseInt(addr.substring(colon + 1));
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+          String.format("Invalid port number \"%s\"", escapeJava(addr.substring(colon + 1))), e);
+      }
       addr = addr.substring(0, colon);
     }
 

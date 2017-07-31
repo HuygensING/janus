@@ -55,6 +55,13 @@ public class TestElasticBackend {
     assertEquals(9300, addr.getPort());
   }
 
+  @Test(expected = IllegalArgumentException.class)
+  public void invalidPortNumber() throws UnknownHostException {
+    InetSocketTransportAddress addr = ElasticBackend.parseAddr("localhost:0x00");
+    assertEquals("localhost", addr.getHost());
+    assertEquals(0, addr.getPort());
+  }
+
   @Test
   public void nonExistent() throws IOException {
     DocAndAnnotations result = backend.getWithAnnotations("nothing here", false);
