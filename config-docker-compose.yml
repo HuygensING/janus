@@ -1,0 +1,8 @@
+elasticsearch:
+  hosts:
+    - elasticsearch:9300
+  documentIndex: docs
+  documentType: document
+
+swagger:
+  resourcePackage: nl.knaw.huygens.pergamon.janus

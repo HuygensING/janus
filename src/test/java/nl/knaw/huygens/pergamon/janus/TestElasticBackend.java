@@ -2,11 +2,14 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -24,7 +27,7 @@ public class TestElasticBackend {
 
   @Before
   public void connect() throws IOException {
-    backend = new ElasticBackend("localhost", DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
+    backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
     try {
       backend.initIndices();
     } catch (NoNodeAvailableException e) {
@@ -39,6 +42,17 @@ public class TestElasticBackend {
       backend.removeIndices();
     }
     backend.close();
+  }
+
+  @Test
+  public void parseAddr() throws UnknownHostException {
+    InetSocketTransportAddress addr = ElasticBackend.parseAddr("localhost:9301");
+    assertEquals("localhost", addr.getHost());
+    assertEquals(9301, addr.getPort());
+
+    addr = ElasticBackend.parseAddr("localhost");
+    assertEquals("localhost", addr.getHost());
+    assertEquals(9300, addr.getPort());
   }
 
   @Test

@@ -1,30 +1,39 @@
 Janus
 =====
 
-Janus stores documents and annotations on them.
+Janus stores documents and annotations on them in Elasticsearch.
 
-Compile and run::
 
-    mvn clean package
-    ./target/appassembler/bin/janus server janus.yml
+Usage
+-----
+
+You need Elasticsearch to use Janus. For testing, you can use the supplied
+Dockerfile in ``elasticsearch-setup``, which matches the settings in the
+default configuration file ``config-template.yml``::
+
+    (cd elasticsearch-setup &&
+        docker run -p 9200:9200 -p 9300:9300 $(docker build -q .))
+
+Edit ``janus.yml`` if you want to connect to an existing Elasticsearch
+instance. Now compile and run Janus itself::
+
+    mvn clean package &&
+        ./target/appassembler/bin/janus server config-template.yml
 
 or use the Dockerfile, ``docker run -p 8080:8080 $(docker build -q .)``.
+To connect to an existing Elasticsearch cluster, copy ``config-template.yml``
+and edit the copy to point to your cluster.
 
+Elasticsearch needs to have a special index called ``janus_annotations``
+that will hold the annotations (this name is not configurable). Add this
+index using::
 
-Usage with an Elasticsearch backend
------------------------------------
+    sh put_index.sh http://host:port
 
-Start Elasticsearch with the appropriate settings::
+(the URL defaults to ``http://localhost:9200``).
 
-    cd elasticsearch-setup
-    docker run -p 9200:9200 -p 9300:9300 $(docker build -q .)
-
-Add the annotations index::
-
-    sh put_index.sh
-
-You can now upload an XML file to have it indexed as a document with one
-annotation per tag::
+You can now upload an XML file to Janus to have it indexed as a document
+with one annotation per XML element::
 
     curl -X PUT -H "Content-Type: application/xml"  \
         http://localhost:8080/documents/some_id -d @example.xml

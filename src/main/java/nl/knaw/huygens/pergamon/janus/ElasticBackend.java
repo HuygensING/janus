@@ -11,6 +11,7 @@ import org.elasticsearch.action.index.IndexRequestBuilder;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -24,7 +25,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,12 +57,12 @@ public class ElasticBackend implements Backend {
    * @param documentType  Name of the document type.
    * @throws UnknownHostException
    */
-  public ElasticBackend(String host, String documentIndex, String documentType) throws UnknownHostException {
-    this(host, documentIndex, documentType, "janus_annotations", "annotation");
+  public ElasticBackend(List<String> hosts, String documentIndex, String documentType) throws UnknownHostException {
+    this(hosts, documentIndex, documentType, "janus_annotations", "annotation");
   }
 
-  // For test purposes only.
-  ElasticBackend(String host, String documentIndex, String documentType,
+  // Final two arguments are for test purposes only.
+  ElasticBackend(List<String> hosts, String documentIndex, String documentType,
                  String annotationIndex, String annotationType) throws UnknownHostException {
     if (Objects.equals(documentIndex, annotationIndex) || Objects.equals(annotationType, documentType)) {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
@@ -72,8 +73,27 @@ public class ElasticBackend implements Backend {
     this.documentIndex = documentIndex;
     this.documentType = documentType;
 
-    client = new PreBuiltTransportClient(Settings.EMPTY)
-      .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), 9300));
+    TransportClient cli = new PreBuiltTransportClient(Settings.EMPTY);
+    if (hosts.isEmpty()) {
+      cli.addTransportAddress(new InetSocketTransportAddress(new InetSocketAddress("localhost", 9300)));
+    }
+    for (String host : hosts) {
+      cli.addTransportAddress(parseAddr(host));
+    }
+
+    client = cli;
+  }
+
+  static InetSocketTransportAddress parseAddr(String addr) throws UnknownHostException {
+    int port = 9300;
+
+    int colon = addr.lastIndexOf(':');
+    if (colon >= 0) {
+      port = Integer.parseInt(addr.substring(colon + 1));
+      addr = addr.substring(0, colon);
+    }
+
+    return new InetSocketTransportAddress(new InetSocketAddress(addr, port));
   }
 
   @Override

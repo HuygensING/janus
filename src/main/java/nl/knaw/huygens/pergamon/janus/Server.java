@@ -15,6 +15,7 @@ import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.core.MediaType;
 import java.net.UnknownHostException;
+import java.util.List;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
@@ -43,8 +44,16 @@ import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
 )
 public class Server extends Application<Server.Config> {
   static class Config extends Configuration {
+    @JsonProperty("elasticsearch")
+    private ESConfig es;
+
+    @JsonProperty("swagger")
+    private SwaggerBundleConfiguration swaggerBundleConfiguration;
+  }
+
+  static class ESConfig {
     @JsonProperty
-    private String host = "localhost";
+    private List<String> hosts;
 
     @JsonProperty
     @NotEmpty
@@ -53,9 +62,6 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private String documentType;
-
-    @JsonProperty("swagger")
-    private SwaggerBundleConfiguration swaggerBundleConfiguration;
   }
 
   public static void main(String[] args) throws Exception {
@@ -87,6 +93,6 @@ public class Server extends Application<Server.Config> {
   }
 
   private ElasticBackend createBackend(Config configuration) throws UnknownHostException {
-    return new ElasticBackend(configuration.host, configuration.documentIndex, configuration.documentType);
+    return new ElasticBackend(configuration.es.hosts, configuration.es.documentIndex, configuration.es.documentType);
   }
 }

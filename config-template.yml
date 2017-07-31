@@ -1,0 +1,13 @@
+elasticsearch:
+  # Addresses of hosts to connect to. Janus speaks the Elasticsearch Transport
+  # protocol (ports 9300-9399), not HTTP (ports 9200-9299).
+  hosts:
+    - localhost:9300
+    #- someotherhost    # default port 9300 implied
+
+  # Name of document index and of document type.
+  documentIndex: docs
+  documentType: document
+
+swagger:
+  resourcePackage: nl.knaw.huygens.pergamon.janus

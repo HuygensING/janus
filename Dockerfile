@@ -14,10 +14,11 @@ RUN cd /build \
  && cd / \
  && rm -rf /build
 
-COPY janus.yml .
+COPY config-docker-compose.yml .
+COPY config-template.yml config.yml
 COPY annotation-mapping.json .
 COPY put_index.sh .
 
 EXPOSE 8080 8081
 
-ENTRYPOINT ["/usr/local/bin/janus", "server", "janus.yml"]
+ENTRYPOINT ["/usr/local/bin/janus", "server", "config.yml"]
