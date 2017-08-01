@@ -67,7 +67,7 @@ public class TaggedCodepoints extends TaggedText {
 
     private Element apply(Tag root) {
       // Children are sorted by start.
-      Element elem = new Element(root.tag);
+      Element elem = new Element(root.type);
       root.attributes.forEach((k, v) -> elem.addAttribute(new Attribute(k, v)));
 
       for (Tag child : children.getOrDefault(root.id, emptyList())) {

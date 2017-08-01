@@ -21,8 +21,8 @@ public class Tag extends Annotation {
     xmlParent = null;
   }
 
-  public Tag(String id, String tag, int start, int end, String target, String xmlParent) {
-    super(start, end, target, tag, null, "tag", id);
+  public Tag(String id, String type, int start, int end, String target, String xmlParent) {
+    super(start, end, target, type, null, "xml", id);
     this.xmlParent = xmlParent;
   }
 }

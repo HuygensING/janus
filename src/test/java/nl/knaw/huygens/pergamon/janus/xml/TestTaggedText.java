@@ -22,7 +22,7 @@ public abstract class TestTaggedText {
       Tag x = reference[i];
       Tag y = tags.get(i);
 
-      assertEquals(x.tag, y.tag);
+      assertEquals(x.type, y.type);
       assertEquals(x.start, y.start);
       assertEquals(x.end, y.end);
 
@@ -48,8 +48,7 @@ public abstract class TestTaggedText {
 
   protected abstract TaggedText construct(Document doc);
 
-  // Constructs ann annotation with the required tag, start, end.
-  // Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.
+  // Constructs a Tag annotation. Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.
   // Tags may be reused as identifiers.
   protected abstract Tag tag(String tag, int start8, int end8, int start16, int end16, int startCP, int endCP);
 

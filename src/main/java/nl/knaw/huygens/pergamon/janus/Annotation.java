@@ -2,6 +2,8 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.dropwizard.jackson.Jackson;
 
 import java.util.Map;
 import java.util.Objects;
@@ -34,7 +36,7 @@ public class Annotation {
   public final String body;
 
   @JsonProperty
-  public final String tag;
+  public final String type;
 
   /**
    * id of annotated document or annotation.
@@ -43,26 +45,35 @@ public class Annotation {
   public String target;
 
   @JsonProperty
-  public final String type;
+  public final String source;
 
   public Annotation() {
     this(0, 0, "", "", "", "", null);
   }
 
-  public Annotation(int start, int end, String target, String tag, String body, String type, String id) {
-    this(start, end, target, tag, body, type, id, emptyMap());
+  public Annotation(int start, int end, String target, String type, String body, String source, String id) {
+    this(start, end, target, type, body, source, id, emptyMap());
   }
 
-  Annotation(int start, int end, String target, String tag, String body, String type, String id,
+  Annotation(int start, int end, String target, String type, String body, String source, String id,
              Map<String, String> attributes) {
     this.start = start;
     this.end = end;
     this.target = target;
     this.body = body;
-    this.tag = tag;
     this.type = type;
+    this.source = source;
     this.id = id;
     attributes.forEach(this.attributes::put);
+  }
+
+  @Override
+  public String toString() {
+    try {
+      return Jackson.newObjectMapper().writeValueAsString(this);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -79,8 +90,8 @@ public class Annotation {
       Objects.equals(attributes, that.attributes) &&
       Objects.equals(id, that.id) &&
       Objects.equals(body, that.body) &&
-      Objects.equals(tag, that.tag) &&
+      Objects.equals(type, that.type) &&
       Objects.equals(target, that.target) &&
-      Objects.equals(type, that.type);
+      Objects.equals(source, that.source);
   }
 }

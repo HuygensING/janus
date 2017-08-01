@@ -155,7 +155,7 @@ public class ElasticBackend implements Backend {
   }
 
   // Fields of _source that we want below.
-  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "tag", "type", "target"};
+  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "type", "source", "target"};
 
   private List<Annotation> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
                                           List<Annotation> result) {
@@ -201,7 +201,7 @@ public class ElasticBackend implements Backend {
 
   private static Annotation makeAnnotation(Map<String, Object> map, String id) {
     Annotation r = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
-      (String) map.get("tag"), null, (String) map.get("type"), id);
+      (String) map.get("type"), null, (String) map.get("source"), id);
     copyAttributes(map, r);
     return r;
   }
@@ -241,9 +241,8 @@ public class ElasticBackend implements Backend {
                      .field("end", ann.end)
                      .field("attrib", ann.attributes)
                      .field("body", ann.body)
-                     .field("tag", ann.tag)
-                     // XXX hard-wire type to something like "user"?
                      .field("type", ann.type)
+                     .field("source", ann.source)
                      .field("target", ann.target)
                      .field("root", root)
                      .endObject()
@@ -299,8 +298,8 @@ public class ElasticBackend implements Backend {
             .field("start", ann.start)
             .field("end", ann.end)
             .field("attrib", ann.attributes)
-            .field("tag", ann.tag)
-            .field("type", "tag")
+            .field("type", ann.type)
+            .field("source", "xml")
             .field("target", ann.target)
             .field("root", docId)
             // The order field is only used to sort, so that we get XML tags back
@@ -342,11 +341,11 @@ public class ElasticBackend implements Backend {
   }
 
   private static final String[] TAG_FIELDS =
-    new String[]{"attrib", "start", "end", "tag", "target", "xmlParent"};
+    new String[]{"attrib", "start", "end", "type", "target", "xmlParent"};
 
   private List<Tag> getTags(String id) {
     BoolQueryBuilder query = boolQuery().filter(termQuery("target", id))
-                                        .filter(termQuery("type", "tag"))
+                                        .filter(termQuery("source", "xml"))
                                         .filter(existsQuery("xmlParent"));
 
     SearchResponse response = client.prepareSearch(annotationIndex)
@@ -360,7 +359,7 @@ public class ElasticBackend implements Backend {
     return Arrays.stream(response.getHits().getHits()).map(hit -> {
       Map<String, Object> map = hit.getSourceAsMap();
 
-      Tag tag = new Tag(hit.getId(), (String) map.get("tag"), (int) map.get("start"), (int) map.get("end"),
+      Tag tag = new Tag(hit.getId(), (String) map.get("type"), (int) map.get("start"), (int) map.get("end"),
         (String) map.get("target"), (String) map.get("xmlParent"));
       copyAttributes(map, tag);
 

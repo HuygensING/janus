@@ -91,8 +91,8 @@ public class TestElasticBackend {
       ann.id = annId;
       Annotation got = backend.getAnnotation(annId);
       assertEquals(ann, got);
-      assertEquals("note", got.tag);
-      assertEquals("note", dAndA.annotations.get(0).tag);
+      assertEquals("note", got.type);
+      assertEquals("note", dAndA.annotations.get(0).type);
     });
   }
 
@@ -114,9 +114,9 @@ public class TestElasticBackend {
     assertEquals(docId, doc.id);
 
     List<Annotation> ann = doc.annotations;
-    assertEquals(new Annotation(0, 14, docId, "msg", null, "tag", ann.get(0).id, ImmutableMap.of("num", "1")),
+    assertEquals(new Annotation(0, 14, docId, "msg", null, "xml", ann.get(0).id, ImmutableMap.of("num", "1")),
       ann.get(0));
-    assertEquals(new Annotation(7, 7, docId, "xml", null, "tag", ann.get(1).id,
+    assertEquals(new Annotation(7, 7, docId, "xml", null, "xml", ann.get(1).id,
         ImmutableMap.of("num", "2", "attr", "extra")),
       ann.get(1));
   }
