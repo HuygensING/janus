@@ -17,6 +17,24 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 
 public interface Backend extends AutoCloseable {
+  // Part of a paginated list.
+  class ListPage {
+    @JsonProperty
+    public List<String> result;
+
+    @JsonProperty
+    public int from;
+
+    @JsonProperty
+    public long total;
+
+    ListPage(int from, long total, List<String> result) {
+      this.result = result;
+      this.from = from;
+      this.total = total;
+    }
+  }
+
   // To be returned by PUT/POST methods.
   class PutResult {
     // Id of document or annotation that was created.
@@ -105,7 +123,7 @@ public interface Backend extends AutoCloseable {
    * @param query Query string (Lucene syntax). null to get all documents.
    * @return List of matching document ids.
    */
-  List<String> listDocs(String query);
+  ListPage listDocs(String query, int from, int count);
 
   /**
    * Stores the annotation ann, which must have its target set.

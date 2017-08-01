@@ -40,10 +40,13 @@ public class DocumentsResource {
 
   @GET
   @Path("")
-  @ApiOperation(value = "List of document ids in the index", notes = "?q expects Lucene query syntax.",
-    response = String.class, responseContainer = "List")
-  public Response index(@QueryParam("q") String query) {
-    return Backend.asResponse(backend.listDocs(query));
+  @ApiOperation(value = "List of document ids in the index",
+    notes = "Paginated; counting starts at 0. Parameter q expects Lucene query syntax.",
+    response = Backend.ListPage.class)
+  public Response index(@QueryParam("q") String query,
+                        @QueryParam("from") @DefaultValue("0") int from,
+                        @QueryParam("total") @DefaultValue("100") int count) {
+    return Backend.asResponse(backend.listDocs(query, from, count));
   }
 
   @GET

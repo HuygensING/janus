@@ -187,16 +187,20 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public List<String> listDocs(@Nullable String query) {
+  public ListPage listDocs(@Nullable String query, int from, int count) {
     SearchResponse response = client.prepareSearch(documentIndex)
                                     .setTypes(documentType)
                                     .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
                                     .setFetchSource(false)
-                                    .setSize(10000).get(); // TODO pagination
+                                    // TODO scroll?
+                                    .setFrom(from)
+                                    .setSize(count)
+                                    .get();
 
-    return Arrays.stream(response.getHits().getHits())
-                 .map(SearchHit::getId)
-                 .collect(Collectors.toList());
+    return new ListPage(from, response.getHits().getTotalHits(),
+      Arrays.stream(response.getHits().getHits())
+            .map(SearchHit::getId)
+            .collect(Collectors.toList()));
   }
 
   private static Annotation makeAnnotation(Map<String, Object> map, String id) {
