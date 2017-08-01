@@ -99,6 +99,8 @@ public interface Backend extends AutoCloseable {
     return putAnnotation(ann);
   }
 
+  List<String> listDocuments();
+
   /**
    * Stores the annotation ann, which must have its target set.
    */

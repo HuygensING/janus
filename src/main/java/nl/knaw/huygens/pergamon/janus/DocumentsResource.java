@@ -39,6 +39,13 @@ public class DocumentsResource {
   }
 
   @GET
+  @Path("")
+  @ApiOperation(value = "List of document ids in the index")
+  public Response index() {
+    return Backend.asResponse(backend.listDocuments());
+  }
+
+  @GET
   @Path("{id}")
   @ApiOperation(value = "Gets a document and its annotations by id",
     response = DocAndAnnotations.class)

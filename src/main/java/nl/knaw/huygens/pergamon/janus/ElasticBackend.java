@@ -17,6 +17,7 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
@@ -40,6 +41,7 @@ import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
+import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
@@ -182,6 +184,18 @@ public class ElasticBackend implements Backend {
     }
 
     return result;
+  }
+
+  @Override
+  public List<String> listDocuments() {
+    SearchResponse response = client.prepareSearch(documentIndex)
+                                    .setTypes(documentType)
+                                    .setQuery(matchAllQuery())
+                                    .setFetchSource(false)
+                                    .setSize(10000).get(); // TODO pagination
+    return Arrays.stream(response.getHits().getHits())
+                 .map(SearchHit::getId)
+                 .collect(Collectors.toList());
   }
 
   private static Annotation makeAnnotation(Map<String, Object> map, String id) {
