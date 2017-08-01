@@ -7,14 +7,21 @@ import nu.xom.ParsingException;
 import java.io.IOException;
 import java.io.StringReader;
 
-// Wraps a global nu.xom.Builder that we use in various places.
+// Wraps thread-local nu.xom.Builders.
+// http://xom.nu/designprinciples.xhtml#d680e169
 public class XmlParser {
   private XmlParser() {
   }
 
-  private static final Builder BUILDER = new Builder();
+  private static final ThreadLocal<Builder> BUILDER =
+    new ThreadLocal<Builder>() {
+      @Override
+      protected Builder initialValue() {
+        return new Builder();
+      }
+    };
 
   public static Document fromString(String s) throws IOException, ParsingException {
-    return BUILDER.build(new StringReader(s));
+    return BUILDER.get().build(new StringReader(s));
   }
 }
