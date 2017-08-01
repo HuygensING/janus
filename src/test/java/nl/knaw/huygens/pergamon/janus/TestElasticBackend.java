@@ -83,6 +83,7 @@ public class TestElasticBackend {
 
     retry(() -> {
       DocAndAnnotations dAndA = backend.getWithAnnotations("some_id", true);
+      assertEquals("some_id", dAndA.id);
       assertEquals("some text", dAndA.text);
       assertEquals(1, dAndA.annotations.size());
 
@@ -109,6 +110,8 @@ public class TestElasticBackend {
       assertEquals(2, d.annotations.size());
       return d;
     });
+
+    assertEquals(docId, doc.id);
 
     List<Annotation> ann = doc.annotations;
     assertEquals(new Annotation(0, 14, docId, "msg", null, "tag", ann.get(0).id, ImmutableMap.of("num", "1")),

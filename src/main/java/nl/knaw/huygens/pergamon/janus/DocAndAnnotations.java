@@ -9,12 +9,16 @@ import java.util.List;
  */
 public class DocAndAnnotations {
   @JsonProperty
+  public String id = null;
+
+  @JsonProperty
   public String text = null;
 
   @JsonProperty
   public List<Annotation> annotations = null;
 
-  DocAndAnnotations(String text, List<Annotation> annotations) {
+  DocAndAnnotations(String id, String text, List<Annotation> annotations) {
+    this.id = id;
     this.text = text;
     this.annotations = annotations;
   }

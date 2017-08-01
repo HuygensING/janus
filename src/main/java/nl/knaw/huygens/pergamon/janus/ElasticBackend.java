@@ -145,7 +145,7 @@ public class ElasticBackend implements Backend {
       isRoot = false;
     }
 
-    return new DocAndAnnotations((String) response.getSourceAsMap().get("body"),
+    return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
       getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
   }
 
