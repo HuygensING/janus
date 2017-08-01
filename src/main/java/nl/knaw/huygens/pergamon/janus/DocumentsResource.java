@@ -40,9 +40,10 @@ public class DocumentsResource {
 
   @GET
   @Path("")
-  @ApiOperation(value = "List of document ids in the index")
-  public Response index() {
-    return Backend.asResponse(backend.listDocuments());
+  @ApiOperation(value = "List of document ids in the index", notes = "?q expects Lucene query syntax.",
+    response = String.class, responseContainer = "List")
+  public Response index(@QueryParam("q") String query) {
+    return Backend.asResponse(backend.listDocs(query));
   }
 
   @GET

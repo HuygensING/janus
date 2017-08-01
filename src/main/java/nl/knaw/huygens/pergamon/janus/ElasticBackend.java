@@ -187,12 +187,13 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public List<String> listDocuments() {
+  public List<String> listDocs(@Nullable String query) {
     SearchResponse response = client.prepareSearch(documentIndex)
                                     .setTypes(documentType)
-                                    .setQuery(matchAllQuery())
+                                    .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
                                     .setFetchSource(false)
                                     .setSize(10000).get(); // TODO pagination
+
     return Arrays.stream(response.getHits().getHits())
                  .map(SearchHit::getId)
                  .collect(Collectors.toList());

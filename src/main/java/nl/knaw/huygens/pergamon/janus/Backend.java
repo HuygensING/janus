@@ -99,7 +99,13 @@ public interface Backend extends AutoCloseable {
     return putAnnotation(ann);
   }
 
-  List<String> listDocuments();
+  /**
+   * List documents ids in index, with optional full-text search.
+   *
+   * @param query Query string (Lucene syntax). null to get all documents.
+   * @return List of matching document ids.
+   */
+  List<String> listDocs(String query);
 
   /**
    * Stores the annotation ann, which must have its target set.
