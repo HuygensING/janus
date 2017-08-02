@@ -19,12 +19,24 @@ public class TestElasticBackend {
     addr = ElasticBackend.parseAddr("localhost");
     assertEquals("localhost", addr.getHost());
     assertEquals(9300, addr.getPort());
+
+    // IPv6
+    addr = ElasticBackend.parseAddr("[::1]:9300");
+    assertEquals("0:0:0:0:0:0:0:1", addr.getHost());
+    assertEquals(9300, addr.getPort());
+
+    addr = ElasticBackend.parseAddr("[::1]");
+    assertEquals("0:0:0:0:0:0:0:1", addr.getHost());
+    assertEquals(9300, addr.getPort());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void invalidIPv6() throws UnknownHostException {
+    InetSocketTransportAddress addr = ElasticBackend.parseAddr("[::1");
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void invalidPortNumber() throws UnknownHostException {
     InetSocketTransportAddress addr = ElasticBackend.parseAddr("localhost:0x00");
-    assertEquals("localhost", addr.getHost());
-    assertEquals(0, addr.getPort());
   }
 }

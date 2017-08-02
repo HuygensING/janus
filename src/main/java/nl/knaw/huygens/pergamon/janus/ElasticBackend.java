@@ -87,18 +87,22 @@ public class ElasticBackend implements Backend {
     client = cli;
   }
 
+  // Parse address spec of the form <addr>[:<port>]
   static InetSocketTransportAddress parseAddr(String addr) throws UnknownHostException {
     int port = 9300;
 
     int colon = addr.lastIndexOf(':');
     if (colon >= 0) {
-      try {
-        port = Integer.parseInt(addr.substring(colon + 1));
-      } catch (NumberFormatException e) {
-        throw new IllegalArgumentException(
-          String.format("Invalid port number \"%s\"", escapeJava(addr.substring(colon + 1))), e);
+      String after = addr.substring(colon + 1);
+      if (!after.matches("[0-9:]+\\]")) {
+        try {
+          port = Integer.parseInt(after);
+        } catch (NumberFormatException e) {
+          throw new IllegalArgumentException(
+            String.format("Invalid port number \"%s\"", escapeJava(after)), e);
+        }
+        addr = addr.substring(0, colon);
       }
-      addr = addr.substring(0, colon);
     }
 
     return new InetSocketTransportAddress(new InetSocketAddress(addr, port));
