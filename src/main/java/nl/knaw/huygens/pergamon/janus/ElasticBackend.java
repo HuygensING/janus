@@ -45,6 +45,9 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 
+/**
+ * Backend that stores documents and annotations in an Elasticsearch cluster.
+ */
 public class ElasticBackend implements Backend {
   // Name of ES index used to store annotations.
   private final String annotationIndex;
@@ -56,6 +59,10 @@ public class ElasticBackend implements Backend {
   private final String documentType;
 
   /**
+   * Construct Backend instance with a list of backing Elasticsearch connections.
+   *
+   * @param hosts         Hosts to connect to. These have the form addr:port,
+   *                      where the port is optional and defaults to 9300.
    * @param documentIndex Name of the document index.
    * @param documentType  Name of the document type.
    * @throws UnknownHostException

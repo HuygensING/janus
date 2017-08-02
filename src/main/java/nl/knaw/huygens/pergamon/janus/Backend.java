@@ -17,7 +17,9 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 
 public interface Backend extends AutoCloseable {
-  // Part of a paginated list.
+  /**
+   * Part of a paginated list.
+   */
   class ListPage {
     @JsonProperty
     public List<String> result;
@@ -35,16 +37,25 @@ public interface Backend extends AutoCloseable {
     }
   }
 
-  // To be returned by PUT/POST methods.
+  /**
+   * Returned by PUT/POST methods.
+   */
   class PutResult {
-    // Id of document or annotation that was created.
+    /**
+     * Id of document or annotation that was created.
+     */
     @JsonProperty
     public final String id;
 
-    // HTTP status.
+    /**
+     * HTTP status code.
+     */
     @JsonProperty
     public final int status;
 
+    /**
+     * Optional error message.
+     */
     @JsonInclude(value = JsonInclude.Include.NON_EMPTY)
     public final String message;
 
@@ -132,6 +143,9 @@ public interface Backend extends AutoCloseable {
 
   PutResult putTxt(@Nullable String id, String content) throws IOException;
 
+  /**
+   * Store XML document's text with one annotation per XML element.
+   */
   default PutResult putXml(String id, String document) throws IOException {
     try {
       return putXml(new TaggedCodepoints(XmlParser.fromString(document), id));
@@ -140,5 +154,8 @@ public interface Backend extends AutoCloseable {
     }
   }
 
+  /**
+   * Store XML document's text with one annotation per XML element.
+   */
   PutResult putXml(TaggedCodepoints document) throws IOException;
 }
