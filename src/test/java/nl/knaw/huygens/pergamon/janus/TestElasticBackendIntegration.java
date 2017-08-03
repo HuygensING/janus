@@ -2,8 +2,8 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -20,11 +20,11 @@ public class TestElasticBackendIntegration {
   private static final String DOC_INDEX = "janus_test_docs";
   private static final String DOC_TYPE = "janus_test_doc";
 
-  private boolean available = true;
-  private ElasticBackend backend;
+  private static boolean available = true;
+  private static ElasticBackend backend;
 
-  @Before
-  public void connect() throws IOException {
+  @BeforeClass
+  public static void connect() throws IOException {
     backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
     try {
       backend.initIndices();
@@ -34,8 +34,8 @@ public class TestElasticBackendIntegration {
     assumeTrue(available);
   }
 
-  @After
-  public void cleanup() throws Exception {
+  @AfterClass
+  public static void cleanup() throws Exception {
     if (available) {
       backend.removeIndices();
     }
