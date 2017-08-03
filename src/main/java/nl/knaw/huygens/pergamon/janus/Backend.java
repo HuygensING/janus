@@ -134,7 +134,7 @@ public interface Backend extends AutoCloseable {
    * <p>
    * If recursive, get annotations on annotations as well.
    */
-  DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException;
+  DocAndAnnotations getWithAnnotations(String id, boolean recursive);
 
   /**
    * Produce reconstruction of XML document.

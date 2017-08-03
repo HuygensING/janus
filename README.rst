@@ -90,6 +90,39 @@ Janus communicates to the outside world using a web API.
 For documentation, fire up Janus and visit http://localhost:8080/swagger/.
 
 
+GraphQL endpoint
+----------------
+
+As an alternative to the REST API, we are developing a GraphQL endpoint for
+communicating with Janus. It can be reached at ``/graphql`` and currently
+supports only read queries, not mutations.
+
+The GraphQL schema can be found in the source code at
+``src/main/resources/schema.graphqls``. It can also be obtained by
+`introspection <http://graphql.org/learn/introspection/>`_ on the GraphQL
+endpoint, e.g.,
+
+::
+
+    curl -H 'Content-Type: application/graphql' \
+        http://localhost:8080/graphql -d '{
+            __schema {
+                queryType {
+                    name
+                    fields {
+                        name
+                        type {
+                            name
+                            kind
+                        }
+                    }
+                }
+            }
+        }
+    ' | jq .data
+
+
+
 Special support for XML
 ~~~~~~~~~~~~~~~~~~~~~~~
 

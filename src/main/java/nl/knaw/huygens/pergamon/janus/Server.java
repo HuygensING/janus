@@ -11,6 +11,7 @@ import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
+import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.core.MediaType;
@@ -90,6 +91,7 @@ public class Server extends Application<Server.Config> {
     final Backend backend = createBackend(configuration);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new DocumentsResource(backend));
+    environment.jersey().register(new GraphQLResource(backend));
 
     backend.registerHealthChecks(environment.healthChecks());
   }

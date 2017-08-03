@@ -177,7 +177,7 @@ public class ElasticBackend implements Backend {
   }
 
   @Override
-  public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
+  public DocAndAnnotations getWithAnnotations(String id, boolean recursive) {
     try {
       GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
       if (!response.isExists()) {

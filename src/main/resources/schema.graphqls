@@ -1,0 +1,28 @@
+type Document {
+    id: String!
+    annotations: [Annotation]!
+}
+
+type Annotation {
+    id: String!
+    body: Document
+    attributes: [Attribute]!
+    attribute(key: String): String
+}
+
+type Attribute {
+    key: String!
+    value: String!
+}
+
+type Query {
+    annotation(id: String) : Annotation
+    document(id: String): Document
+
+    # Full text search with pagination. Query is a Lucene query string.
+    fulltext(query: String, from: Int, count: Int): [Document]
+}
+
+schema {
+    query: Query
+}
