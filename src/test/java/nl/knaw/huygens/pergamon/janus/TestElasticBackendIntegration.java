@@ -49,6 +49,16 @@ public class TestElasticBackendIntegration {
   }
 
   @Test
+  public void noIndexYet() throws IOException {
+    Backend newBackend = new ElasticBackend(Collections.emptyList(),
+      "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE);
+
+    // These shouldn't raise IndexNotFoundException.
+    assertEquals(null, newBackend.getWithAnnotations("nothing here", false));
+    assertEquals(new Backend.ListPage(0, 0, Collections.emptyList()), newBackend.listDocs("query", 0, 1));
+  }
+
+  @Test
   public void txtAndAnnotation() throws Exception {
     Backend.PutResult result = backend.putTxt("some_id", "some text");
     assertEquals(201, result.status);

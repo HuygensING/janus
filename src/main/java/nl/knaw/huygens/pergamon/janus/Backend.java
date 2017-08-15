@@ -35,6 +35,25 @@ public interface Backend extends AutoCloseable {
       this.from = from;
       this.total = total;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ListPage listPage = (ListPage) o;
+      return from == listPage.from &&
+        total == listPage.total &&
+        Objects.equals(result, listPage.result);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(result, from, total);
+    }
   }
 
   /**

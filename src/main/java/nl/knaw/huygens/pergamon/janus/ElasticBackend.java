@@ -15,6 +15,7 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.search.SearchHit;
@@ -36,6 +37,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
+import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
@@ -147,17 +149,21 @@ public class ElasticBackend implements Backend {
   @Override
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
     boolean isRoot = true;
-    GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
-    if (!response.isExists()) {
-      response = client.prepareGet(annotationIndex, annotationType, id).get();
+    try {
+      GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
       if (!response.isExists()) {
-        return null;
+        response = client.prepareGet(annotationIndex, annotationType, id).get();
+        if (!response.isExists()) {
+          return null;
+        }
+        isRoot = false;
       }
-      isRoot = false;
-    }
 
-    return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
-      getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
+      return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
+        getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
+    } catch (IndexNotFoundException e) {
+      return null; // force 404
+    }
   }
 
   @Override
@@ -199,19 +205,23 @@ public class ElasticBackend implements Backend {
 
   @Override
   public ListPage listDocs(@Nullable String query, int from, int count) {
-    SearchResponse response = client.prepareSearch(documentIndex)
-                                    .setTypes(documentType)
-                                    .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
-                                    .setFetchSource(false)
-                                    // TODO scroll?
-                                    .setFrom(from)
-                                    .setSize(count)
-                                    .get();
+    try {
+      SearchResponse response = client.prepareSearch(documentIndex)
+                                      .setTypes(documentType)
+                                      .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
+                                      .setFetchSource(false)
+                                      // TODO scroll?
+                                      .setFrom(from)
+                                      .setSize(count)
+                                      .get();
 
-    return new ListPage(from, response.getHits().getTotalHits(),
-      Arrays.stream(response.getHits().getHits())
-            .map(SearchHit::getId)
-            .collect(Collectors.toList()));
+      return new ListPage(from, response.getHits().getTotalHits(),
+        Arrays.stream(response.getHits().getHits())
+              .map(SearchHit::getId)
+              .collect(Collectors.toList()));
+    } catch (IndexNotFoundException e) {
+      return new ListPage(0, 0, emptyList());
+    }
   }
 
   private static Annotation makeAnnotation(Map<String, Object> map, String id) {
