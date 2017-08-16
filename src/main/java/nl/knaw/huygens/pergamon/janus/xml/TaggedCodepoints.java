@@ -69,9 +69,22 @@ public class TaggedCodepoints extends TaggedText {
       // Children are sorted by start.
       Element elem = mkElem(root);
 
-      root.attributes.forEach((k, v) -> {
-        if (!k.equals("xmlns") && !k.startsWith("xmlns:")) {
-          elem.addAttribute(new Attribute(k, v));
+      root.attributes.forEach((name, value) -> {
+        if (name.startsWith("xmlns:")) {
+          elem.addNamespaceDeclaration(name.substring(6), value);
+        }
+      });
+
+      root.attributes.forEach((name, value) -> {
+        if (!name.equals("xmlns") && !name.startsWith("xmlns:")) {
+          String prefix = prefix(name);
+          Attribute attr = null;
+          if (prefix == null) {
+            attr = new Attribute(name, value);
+          } else {
+            attr = new Attribute(name, elem.getNamespaceURI(prefix), value);
+          }
+          elem.addAttribute(attr);
         }
       });
 
@@ -98,15 +111,19 @@ public class TaggedCodepoints extends TaggedText {
 
   private static Element mkElem(Tag tag) {
     String name = tag.type;
+    String prefix = prefix(tag.type);
+    if (prefix == null) {
+      String ns = tag.attributes.get("xmlns");
+      return ns == null ? new Element(name) : new Element(name, ns);
+    }
+    return new Element(name, tag.attributes.get("xmlns:" + prefix));
+  }
+
+  private static String prefix(String name) {
     int colon = name.indexOf(':');
     if (colon == -1) {
-      String ns = tag.attributes.get("xmlns");
-      if (ns != null) {
-        return new Element(name, ns);
-      }
-      return new Element(name);
+      return null;
     }
-    String prefix = name.substring(0, colon);
-    return new Element(name, tag.attributes.get("xmlns:" + prefix));
+    return name.substring(0, colon);
   }
 }

@@ -39,6 +39,13 @@ public class TestTaggedCodepoints extends TestTaggedText {
       "<p a=\"what?\" b=\"bla\" x=\"who?\" z=\"foo\" />");
 
     // XML namespaces should come out right.
-    test("<x><y xmlns=\"http://y\"><y2 /><z:z xmlns:z=\"http://z\" /></y></x>");
+    test("<x:x xmlns:x=\"http://x\" />");
+    test("<x:x xmlns:x=\"http://x\" x:attr=\"root\" />");
+    test("<x xmlns=\"http://x\" attr=\"root\" />");
+    // This one is broken. The x: prefix is unknown at the addAttribute call site,
+    // because we construct the tree bottom-up rather than top-down.
+    //test("<x:x xmlns:x=\"http://x\"><y x:attr=\"sub\" /></x:x>");
+    test("<x:x xmlns:x=\"http://x\"><y xmlns=\"http://y\" attr=\"sub\" /></x:x>");
+    test("<x xmlns=\"http://x\"><y:y xmlns:y=\"http://y\" y:attr=\"sub\" /></x>");
   }
 }

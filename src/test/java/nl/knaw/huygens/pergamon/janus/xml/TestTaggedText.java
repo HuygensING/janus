@@ -73,10 +73,17 @@ public abstract class TestTaggedText {
 
   @Test
   public void namespaces() {
-    test("<foo:x xmlns:foo='http://example.com/foo'><bar:y xmlns:bar='http://example.com/bar'/><baz/></foo:x>", "",
-      tag("foo:x", 0, 0, 0, 0, 0, 0, "xmlns:foo", "http://example.com/foo"),
-      tag("bar:y", 0, 0, 0, 0, 0, 0, "xmlns:bar", "http://example.com/bar"),
-      tag("baz", 0, 0, 0, 0, 0, 0));
+    test("<foo:x xmlns:foo='http://foo' xml:id='id'>" +
+        "<bar:y xmlns:bar='http://bar' xmlns:quux='http://quux' quux:attr='dada'/>" +
+        "<baz foo:attr='value'/></foo:x>", "",
+      tag("foo:x", 0, 0, 0, 0, 0, 0,
+        "xmlns:foo", "http://foo",
+        "xml:id", "id"),
+      tag("bar:y", 0, 0, 0, 0, 0, 0,
+        "xmlns:bar", "http://bar",
+        "quux:attr", "dada"),
+      tag("baz", 0, 0, 0, 0, 0, 0,
+        "foo:attr", "value"));
 
     test("<x xmlns='http://example.com/bla'><y/><z xmlns='http://z'><z2/></z></x>", "",
       tag("x", 0, 0, 0, 0, 0, 0, "xmlns", "http://example.com/bla"),
