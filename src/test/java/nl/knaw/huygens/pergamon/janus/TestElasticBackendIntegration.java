@@ -6,6 +6,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -129,6 +130,29 @@ public class TestElasticBackendIntegration {
 
     retry(() -> assertEquals(ann1, backend.getAnnotation(ann1.id)));
     retry(() -> assertEquals(ann2, backend.getAnnotation(ann2.id)));
+  }
+
+  @Test
+  public void addBody() throws Exception {
+    String docId = backend.putTxt(null, "some doc").id;
+    assertNotNull(docId);
+
+    Annotation ann = new Annotation(0, 4, docId, "note", null, "test", null);
+    Backend.PutResult result = backend.putAnnotation(ann);
+    assertEquals(result.status, 201);
+    String annid = result.id;
+    assertNotNull(annid);
+
+    result = backend.putTxt(null, "body of note");
+    assertEquals(result.status, 201);
+    assertNotNull(result.id);
+    String bodyid = result.id;
+    Response response = backend.addBody(annid, bodyid);
+    assertEquals(200, response.getStatus());
+
+    ann.body = bodyid;
+    ann.id = annid;
+    retry(() -> assertEquals(ann, backend.getAnnotation(annid)));
   }
 
   @Test

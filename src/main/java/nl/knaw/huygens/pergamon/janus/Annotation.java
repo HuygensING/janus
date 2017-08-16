@@ -33,7 +33,7 @@ public class Annotation {
   public final int end;
 
   @JsonInclude(JsonInclude.Include.NON_EMPTY)
-  public final String body;
+  public String body;
 
   @JsonProperty
   public final String type;

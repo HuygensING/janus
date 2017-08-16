@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 
@@ -146,6 +147,24 @@ public interface Backend extends AutoCloseable {
     ann.target = target;
     return putAnnotation(ann);
   }
+
+  default Response addBody(String id, String bodyId) throws IOException {
+    Annotation ann = getAnnotation(id);
+    if (ann.body != null) {
+      if (ann.body.equals(bodyId)) {
+        return Response.status(OK).build();
+      } else {
+        return Response.status(CONFLICT).build();
+      }
+    }
+    return setBody(id, bodyId);
+  }
+
+  /**
+   * Set body field of annotation to the id of a document.
+   * Precondition (using the default addBody) is that annId exists and its body is null.
+   */
+  Response setBody(String annId, String bodyId) throws IOException;
 
   /**
    * List documents ids in index, with optional full-text search.

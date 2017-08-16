@@ -14,7 +14,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -41,6 +40,7 @@ import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.elasticsearch.common.xcontent.XContentType.JSON;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
@@ -127,7 +127,7 @@ public class ElasticBackend implements Backend {
     InputStream mapping = ElasticBackend.class.getResourceAsStream("/annotation-mapping.json");
     CreateIndexResponse resp = client.admin().indices().prepareCreate(annotationIndex)
                                      .addMapping(annotationType, CharStreams.toString(new InputStreamReader(mapping)),
-                                       XContentType.JSON)
+                                       JSON)
                                      .get();
     if (!resp.isAcknowledged()) {
       return false;
@@ -226,7 +226,7 @@ public class ElasticBackend implements Backend {
 
   private static Annotation makeAnnotation(Map<String, Object> map, String id) {
     Annotation r = new Annotation((int) map.get("start"), (int) map.get("end"), (String) map.get("target"),
-      (String) map.get("type"), null, (String) map.get("source"), id);
+      (String) map.get("type"), (String) map.get("body"), (String) map.get("source"), id);
     copyAttributes(map, r);
     return r;
   }
@@ -276,6 +276,24 @@ public class ElasticBackend implements Backend {
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
+  }
+
+  @Override
+  public Response setBody(String annId, String bodyId) throws IOException {
+    // TODO Refactor. This is repeating the fetch on annId.
+    GetResponse getR = client.prepareGet(annotationIndex, annotationType, annId).get();
+    Map<String, Object> ann = getR.getSourceAsMap();
+
+    GetResponse bodyR = client.prepareGet(documentIndex, documentType, bodyId).get();
+    if (!bodyR.isExists()) {
+      return Response.status(404).build();
+    }
+    ann.put("body", bodyId);
+
+    IndexResponse idxR = client.prepareIndex(annotationIndex, annotationType, annId)
+                               .setSource(ann)
+                               .get();
+    return Response.status(idxR.status().getStatus()).entity(ann).build();
   }
 
   @Override

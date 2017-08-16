@@ -10,6 +10,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -42,6 +43,14 @@ public class AnnotationsResource {
   })
   public Response get(@PathParam("id") String id) {
     return Backend.asResponse(backend.getAnnotation(id));
+  }
+
+  @PUT
+  @Path("{id}/body")
+  @ApiOperation(value = "Sets the body field of an annotation to the id of an existing document",
+    response = Annotation.class)
+  public Response addBody(@PathParam("id") String id, String bodyId) throws IOException {
+    return backend.addBody(id, bodyId);
   }
 
   @GET
