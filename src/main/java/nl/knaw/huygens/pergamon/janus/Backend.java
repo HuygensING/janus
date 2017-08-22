@@ -15,6 +15,7 @@ import java.util.Objects;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 
 public interface Backend extends AutoCloseable {
@@ -152,7 +153,7 @@ public interface Backend extends AutoCloseable {
     Annotation ann = getAnnotation(id);
     if (ann.body != null) {
       if (ann.body.equals(bodyId)) {
-        return Response.status(OK).build();
+        return Response.status(NO_CONTENT).build();
       }
       return Response.status(CONFLICT).build();
     }
