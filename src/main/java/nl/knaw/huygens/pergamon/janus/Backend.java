@@ -153,9 +153,8 @@ public interface Backend extends AutoCloseable {
     if (ann.body != null) {
       if (ann.body.equals(bodyId)) {
         return Response.status(OK).build();
-      } else {
-        return Response.status(CONFLICT).build();
       }
+      return Response.status(CONFLICT).build();
     }
     return setBody(id, bodyId);
   }
