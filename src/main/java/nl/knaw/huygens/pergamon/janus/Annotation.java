@@ -48,7 +48,7 @@ public class Annotation {
   public final String source;
 
   public Annotation() {
-    this(0, 0, "", "", "", "", null);
+    this(0, 0, "", "", null, "", null);
   }
 
   public Annotation(int start, int end, String target, String type, String body, String source, String id) {
