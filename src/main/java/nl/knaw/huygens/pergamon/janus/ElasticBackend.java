@@ -143,6 +143,9 @@ public class ElasticBackend implements Backend {
   @Override
   public Annotation getAnnotation(String id) {
     GetResponse response = client.prepareGet(annotationIndex, annotationType, id).get();
+    if (!response.isExists()) {
+      return null;
+    }
     return makeAnnotation(response.getSourceAsMap(), id);
   }
 
