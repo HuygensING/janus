@@ -151,19 +151,14 @@ public class ElasticBackend implements Backend {
 
   @Override
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) throws IOException {
-    boolean isRoot = true;
     try {
       GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
       if (!response.isExists()) {
-        response = client.prepareGet(annotationIndex, annotationType, id).get();
-        if (!response.isExists()) {
-          return null;
-        }
-        isRoot = false;
+        return null;
       }
 
       return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
-        getAnnotations(id, null, recursive, isRoot, new ArrayList<>()));
+        getAnnotations(id, null, recursive, true, new ArrayList<>()));
     } catch (IndexNotFoundException e) {
       return null; // force 404
     }
@@ -177,6 +172,11 @@ public class ElasticBackend implements Backend {
   // Fields of _source that we want below.
   private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "type", "source", "target"};
 
+  /*
+   * Gets annotations on id, optionally filtered by query q.
+   * If recursive, gets annotations on annotations etc.
+   * If isRoot, id must be a document; we then use the root field for optimized fetching.
+   */
   private List<Annotation> getAnnotations(String id, @Nullable String q, boolean recursive, boolean isRoot,
                                           List<Annotation> result) {
     BoolQueryBuilder query = boolQuery().filter(termQuery(recursive && isRoot ? "root" : "target", id));
