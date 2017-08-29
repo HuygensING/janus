@@ -56,8 +56,9 @@ public class DocumentsResource {
   @ApiResponses(value = {
     @ApiResponse(code = 404, message = "Document not found")
   })
-  public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) throws IOException {
-    return Backend.asResponse(backend.getWithAnnotations(id, true));
+  public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id,
+                      @QueryParam("recursive") @DefaultValue("true") boolean recursive) throws IOException {
+    return Backend.asResponse(backend.getWithAnnotations(id, recursive));
   }
 
   @GET
