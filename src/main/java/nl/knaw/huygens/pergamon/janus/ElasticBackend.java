@@ -3,6 +3,7 @@ package nl.knaw.huygens.pergamon.janus;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.google.common.io.CharStreams;
 import io.dropwizard.elasticsearch.health.EsClusterHealthCheck;
+import io.dropwizard.elasticsearch.health.EsIndexExistsHealthCheck;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -53,6 +54,8 @@ import static org.elasticsearch.index.query.QueryBuilders.termQuery;
  * Backend that stores documents and annotations in an Elasticsearch cluster.
  */
 public class ElasticBackend implements Backend {
+  private static final String ANNOTATION_INDEX = "janus_annotations";
+
   // Name of ES index used to store annotations.
   private final String annotationIndex;
   // Type name of annotations in the ES index.
@@ -72,7 +75,7 @@ public class ElasticBackend implements Backend {
    * @throws UnknownHostException
    */
   public ElasticBackend(List<String> hosts, String documentIndex, String documentType) throws UnknownHostException {
-    this(hosts, documentIndex, documentType, "janus_annotations", "annotation");
+    this(hosts, documentIndex, documentType, ANNOTATION_INDEX, "annotation");
   }
 
   // Final two arguments are for test purposes only.
@@ -122,7 +125,7 @@ public class ElasticBackend implements Backend {
   public void registerHealthChecks(HealthCheckRegistry registry) {
     registry.register("ES cluster health", new EsClusterHealthCheck(client));
     // TODO: registry.register("ES index docs health", XXX);
-    // TODO: registry.register("ES index exists health", XXX);
+    registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
   }
 
   @Override
