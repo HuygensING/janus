@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
@@ -19,6 +20,9 @@ import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 
 public interface Backend extends AutoCloseable {
+
+  void registerHealthChecks(HealthCheckRegistry healthCheckRegistry);
+
   /**
    * Part of a paginated list.
    */

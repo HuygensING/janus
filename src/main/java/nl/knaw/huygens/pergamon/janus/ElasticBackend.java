@@ -1,6 +1,8 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.google.common.io.CharStreams;
+import io.dropwizard.elasticsearch.health.EsClusterHealthCheck;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -115,6 +117,12 @@ public class ElasticBackend implements Backend {
     }
 
     return new InetSocketTransportAddress(new InetSocketAddress(addr, port));
+  }
+
+  public void registerHealthChecks(HealthCheckRegistry registry) {
+    registry.register("ES cluster health", new EsClusterHealthCheck(client));
+    // TODO: registry.register("ES index docs health", XXX);
+    // TODO: registry.register("ES index exists health", XXX);
   }
 
   @Override

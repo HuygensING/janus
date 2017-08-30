@@ -90,6 +90,8 @@ public class Server extends Application<Server.Config> {
     final Backend backend = createBackend(configuration);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new DocumentsResource(backend));
+
+    backend.registerHealthChecks(environment.healthChecks());
   }
 
   private ElasticBackend createBackend(Config configuration) throws UnknownHostException {
