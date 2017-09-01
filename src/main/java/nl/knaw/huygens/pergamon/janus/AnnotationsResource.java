@@ -60,6 +60,10 @@ public class AnnotationsResource {
   public List<Annotation> getAnnotations(@PathParam("id") String id,
                                          @ApiParam("recursively get annotation on the annotations")
                                          @QueryParam("recursive") @DefaultValue("true") boolean recursive) {
+    // First ensure that id is really an annotation (not a document)
+    if (backend.getAnnotation(id) == null) {
+      return null;
+    }
     return backend.getAnnotations(id, null, recursive);
   }
 
