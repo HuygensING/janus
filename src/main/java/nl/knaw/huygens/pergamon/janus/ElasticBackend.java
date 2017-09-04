@@ -181,7 +181,8 @@ public class ElasticBackend implements Backend {
   }
 
   // Fields of _source that we want below.
-  private static final String[] ANNOTATION_FIELDS = new String[]{"attrib", "start", "end", "type", "source", "target"};
+  private static final String[] ANNOTATION_FIELDS =
+    new String[]{"attrib", "start", "end", "type", "source", "target", "body"};
 
   /*
    * Gets annotations on id, optionally filtered by query q.
