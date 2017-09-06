@@ -33,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,6 +56,8 @@ import static org.elasticsearch.index.query.QueryBuilders.termQuery;
  */
 public class ElasticBackend implements Backend {
   private static final String ANNOTATION_INDEX = "janus_annotations";
+  private static final String ANNOTATION_TYPE = "annotation";
+  private static final String ANNOTATION_MAPPING_IN_JSON = "/annotation-mapping.json";
 
   // Name of ES index used to store annotations.
   private final String annotationIndex;
@@ -75,7 +78,7 @@ public class ElasticBackend implements Backend {
    * @throws UnknownHostException
    */
   public ElasticBackend(List<String> hosts, String documentIndex, String documentType) throws UnknownHostException {
-    this(hosts, documentIndex, documentType, ANNOTATION_INDEX, "annotation");
+    this(hosts, documentIndex, documentType, ANNOTATION_INDEX, ANNOTATION_TYPE);
   }
 
   // Final two arguments are for test purposes only.
@@ -133,17 +136,30 @@ public class ElasticBackend implements Backend {
     client.close();
   }
 
-  // For test purposes only.
+  Collection<String> getIndices() {
+    return Arrays.asList(client.admin().indices().prepareGetIndex().get().getIndices());
+  }
+
   boolean initIndices() throws IOException {
-    InputStream mapping = ElasticBackend.class.getResourceAsStream("/annotation-mapping.json");
-    CreateIndexResponse resp = client.admin().indices().prepareCreate(annotationIndex)
-                                     .addMapping(annotationType, CharStreams.toString(new InputStreamReader(mapping)),
-                                       JSON)
-                                     .get();
-    if (!resp.isAcknowledged()) {
-      return false;
+    final Collection<String> indices = getIndices();
+
+    if (!indices.contains(annotationIndex)) {
+      final InputStream resource = ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON);
+      final String mappingInJson = CharStreams.toString(new InputStreamReader(resource));
+      CreateIndexResponse resp = client.admin().indices().prepareCreate(annotationIndex)
+                                       .addMapping(annotationType, mappingInJson, JSON)
+                                       .get();
+
+      if (!resp.isAcknowledged()) {
+        return false;
+      }
     }
-    return client.admin().indices().prepareCreate(documentIndex).get().isAcknowledged();
+
+    if (!indices.contains(documentIndex)) {
+      return client.admin().indices().prepareCreate(documentIndex).get().isAcknowledged();
+    }
+
+    return true;
   }
 
   // For test purposes only.

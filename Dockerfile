@@ -16,8 +16,6 @@ RUN cd /build \
 
 COPY config-docker-compose.yml .
 COPY config-template.yml config.yml
-COPY annotation-mapping.json .
-COPY put_index.sh .
 
 EXPOSE 8080 8081
 

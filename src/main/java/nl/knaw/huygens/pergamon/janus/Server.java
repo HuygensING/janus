@@ -14,7 +14,7 @@ import io.swagger.annotations.SwaggerDefinition;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.core.MediaType;
-import java.net.UnknownHostException;
+import java.io.IOException;
 import java.util.List;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
@@ -94,7 +94,11 @@ public class Server extends Application<Server.Config> {
     backend.registerHealthChecks(environment.healthChecks());
   }
 
-  private ElasticBackend createBackend(Config configuration) throws UnknownHostException {
-    return new ElasticBackend(configuration.es.hosts, configuration.es.documentIndex, configuration.es.documentType);
+  private ElasticBackend createBackend(Config config) throws IOException {
+    final ElasticBackend backend = new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType);
+    if (!backend.initIndices()) {
+      throw new RuntimeException("Failed to initialize elastic search indices");
+    }
+    return backend;
   }
 }

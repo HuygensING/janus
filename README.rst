@@ -24,14 +24,6 @@ or use the Dockerfile, ``docker run -p 8080:8080 $(docker build -q .)``.
 To connect to an existing Elasticsearch cluster, copy ``config-template.yml``
 and edit the copy to point to your cluster.
 
-Elasticsearch needs to have a special index called ``janus_annotations``
-that will hold the annotations (this name is not configurable). Add this
-index using::
-
-    sh put_index.sh http://host:port
-
-(the URL defaults to ``http://localhost:9200``).
-
 You can now upload an XML file to Janus to have it indexed as a document
 with one annotation per XML element::
 

@@ -12,9 +12,7 @@ services:
     ports:
       - "8080:8080"
     entrypoint:
-      ["sh", "-c",
-       "./put_index.sh http://elasticsearch:9200 &&
-        exec /usr/local/bin/janus server config-docker-compose.yml"]
+      ["sh", "-c", "exec /usr/local/bin/janus server config-docker-compose.yml"]
 
   elasticsearch:
     build:
