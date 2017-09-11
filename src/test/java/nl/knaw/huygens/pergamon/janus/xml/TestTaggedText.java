@@ -72,6 +72,14 @@ public abstract class TestTaggedText {
   }
 
   @Test
+  public void comments() {
+    test("<foo><!-- what's next? --><bar/></foo>", "",
+      tag("foo", 0, 0, 0, 0, 0, 0),
+      tag("bar", 0, 0, 0, 0, 0, 0));
+    // TODO test recording of comments
+  }
+
+  @Test
   public void namespaces() {
     test("<foo:x xmlns:foo='http://foo' xml:id='id'>" +
         "<bar:y xmlns:bar='http://bar' xmlns:quux='http://quux' quux:attr='dada'/>" +

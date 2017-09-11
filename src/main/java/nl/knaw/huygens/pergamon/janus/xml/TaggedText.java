@@ -2,6 +2,7 @@ package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import nu.xom.Attribute;
+import nu.xom.Comment;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Node;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static java.util.stream.IntStream.range;
@@ -21,6 +23,7 @@ import static java.util.stream.IntStream.range;
 public abstract class TaggedText {
   public final String docId;
   private final HashMap<Node, String> nodeId = new HashMap<>();
+  private Map<Integer, List<Comment>> comments = new HashMap<>();
   final List<Tag> tags;
   final StringBuilder sb;
 
@@ -62,6 +65,7 @@ public abstract class TaggedText {
 
   protected abstract void append(String s);
 
+  // Current byte/halfword/codepoint offset into the text of the input.
   protected abstract int offset();
 
   // Pre-order traversal of t.
@@ -99,6 +103,15 @@ public abstract class TaggedText {
           tag.attributes.put("xmlns", uri);
         }
       }
+    } else if (node instanceof Comment) {
+      comments.compute(offset(), (k, v) -> {
+        if (v == null) {
+          v = new ArrayList<>();
+        }
+        node.detach();
+        v.add((Comment) node);
+        return v;
+      });
     }
   }
 }
