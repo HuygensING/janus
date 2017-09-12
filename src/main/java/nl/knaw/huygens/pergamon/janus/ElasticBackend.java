@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
 import static java.util.Collections.emptyList;
-import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
+import static org.apache.commons.text.StringEscapeUtils.escapeJava;
 import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.common.xcontent.XContentType.JSON;
