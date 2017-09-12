@@ -3,6 +3,7 @@ package nl.knaw.huygens.pergamon.janus;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.google.common.io.CharStreams;
 import io.dropwizard.elasticsearch.health.EsClusterHealthCheck;
+import io.dropwizard.elasticsearch.health.EsIndexDocsHealthCheck;
 import io.dropwizard.elasticsearch.health.EsIndexExistsHealthCheck;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
@@ -127,7 +128,7 @@ public class ElasticBackend implements Backend {
 
   public void registerHealthChecks(HealthCheckRegistry registry) {
     registry.register("ES cluster health", new EsClusterHealthCheck(client));
-    // TODO: registry.register("ES index docs health", XXX);
+    registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
     registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
   }
 
