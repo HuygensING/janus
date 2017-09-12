@@ -35,7 +35,6 @@ public class GraphQLResource {
   }
 
   @POST
-  @Path("/")
   public Object run(String query) {
     GraphQL graphql = newGraphQL(schema).build();
     ExecutionResult result = graphql.execute(query, backend);

@@ -19,7 +19,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 
-
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
@@ -39,7 +38,6 @@ public class DocumentsResource {
   }
 
   @GET
-  @Path("")
   @ApiOperation(value = "List of document ids in the index",
     notes = "Paginated; counting starts at 0. Parameter q expects Lucene query syntax.",
     response = Backend.ListPage.class)
@@ -85,7 +83,6 @@ public class DocumentsResource {
   }
 
   @POST
-  @Path("/")
   @Consumes(MediaType.TEXT_PLAIN)
   @ApiOperation(value = "Add a document", consumes = "text/plain, application/xml", notes = XML_NOTES)
   public Response putTxt(String content) throws IOException {
@@ -112,7 +109,6 @@ public class DocumentsResource {
   }
 
   @POST
-  @Path("/")
   @Consumes(MediaType.APPLICATION_XML)
   public Response putXml(String content) throws IOException {
     return responseBuilder.forResult(backend.putXml(null, content)).build();
