@@ -9,5 +9,10 @@ elasticsearch:
   documentIndex: docs
   documentType: document
 
+logging:
+  level: INFO
+  loggers:
+    "nl.knaw.huygens.pergamon": DEBUG
+
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus
