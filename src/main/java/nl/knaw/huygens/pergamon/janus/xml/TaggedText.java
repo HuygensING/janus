@@ -108,7 +108,8 @@ public abstract class TaggedText {
         if (v == null) {
           v = new ArrayList<>();
         }
-        node.detach();
+        // XXX Detaching the comment node seems to break the rest of the traversal
+        //node.detach();
         v.add((Comment) node);
         return v;
       });
