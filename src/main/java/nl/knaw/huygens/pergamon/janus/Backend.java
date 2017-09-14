@@ -183,6 +183,8 @@ public interface Backend extends AutoCloseable {
    */
   PutResult putAnnotation(Annotation ann) throws IOException;
 
+  PutResult putJSON(@Nullable String id, String content) throws IOException;
+
   PutResult putTxt(@Nullable String id, String content) throws IOException;
 
   /**

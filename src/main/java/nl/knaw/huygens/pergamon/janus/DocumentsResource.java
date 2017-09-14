@@ -89,6 +89,12 @@ public class DocumentsResource {
     return putTxt(null, content);
   }
 
+  @POST
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response putJSON(String content) throws IOException {
+    return putJSON(null, content);
+  }
+
   @PUT
   @Path("{id}")
   @Consumes(MediaType.TEXT_PLAIN)
@@ -96,6 +102,13 @@ public class DocumentsResource {
     consumes = "text/plain, application/xml")
   public Response putTxt(@PathParam("id") String id, String content) throws IOException {
     return backend.putTxt(id, content).asResponse();
+  }
+
+  @PUT
+  @Path("{id}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response putJSON(@PathParam("id") String id, String content) throws IOException {
+    return backend.putJSON(id, content).asResponse();
   }
 
   @GET
