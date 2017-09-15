@@ -11,8 +11,15 @@ elasticsearch:
 
 logging:
   level: INFO
-  loggers:
-    "nl.knaw.huygens.pergamon": DEBUG
+  appenders:
+    - type: console-json
 
+  loggers:
+    nl.knaw.huygens.pergamon: DEBUG
+
+server:
+  requestLog:
+    appenders: [] # All requests are logged through logging.RequestLoggingFilter
+    
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus

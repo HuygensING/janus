@@ -12,6 +12,7 @@ import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
+import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.core.MediaType;
@@ -86,6 +87,8 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
+    environment.jersey().register(new RequestLoggingFilter());
+
     environment.jersey().register(new SandboxResource());
 
     final Backend backend = createBackend(configuration);
