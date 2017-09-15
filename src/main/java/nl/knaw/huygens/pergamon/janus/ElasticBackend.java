@@ -67,8 +67,8 @@ public class ElasticBackend implements Backend {
   private final String annotationType;
 
   private final Client client;
-  private final String documentIndex;
-  private final String documentType;
+  final String documentIndex;
+  final String documentType;
 
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.

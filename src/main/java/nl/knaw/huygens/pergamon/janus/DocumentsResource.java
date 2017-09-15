@@ -5,6 +5,11 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClients;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -18,6 +23,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -72,6 +78,28 @@ public class DocumentsResource {
                                  @QueryParam("q") String query) {
     // TODO distinguish between id not found (404) and no annotations for id (empty list)
     return Backend.asResponse(backend.getAnnotations(id, query, recursive));
+  }
+
+  @GET
+  @Path("search")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @ApiOperation(value = "Search documents using Elasticsearch",
+    notes = "Returns \"raw\" Elasticsearch results")
+  public Response query(String query) throws IOException {
+    ElasticBackend eb = (ElasticBackend) backend;
+    HttpClient client = HttpClients.createDefault();
+    // TODO should not hardcode the host and port.
+    String url = String.format("http://localhost:9200/%s/%s/_search", eb.documentIndex, eb.documentType);
+    HttpPost req = new HttpPost(url);
+
+    try {
+      req.setEntity(new StringEntity(query));
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+
+    HttpResponse r = client.execute(req);
+    return Response.status(r.getStatusLine().getStatusCode()).entity(r.getEntity().getContent()).build();
   }
 
   @POST
