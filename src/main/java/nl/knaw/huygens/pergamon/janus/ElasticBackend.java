@@ -51,6 +51,7 @@ import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.elasticsearch.index.query.QueryBuilders.wrapperQuery;
 
 /**
  * Backend that stores documents and annotations in an Elasticsearch cluster.
@@ -240,7 +241,7 @@ public class ElasticBackend implements Backend {
     try {
       SearchResponse response = client.prepareSearch(documentIndex)
                                       .setTypes(documentType)
-                                      .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
+                                      .setQuery(query == null ? matchAllQuery() : wrapperQuery(query))
                                       .setFetchSource(false)
                                       // TODO scroll?
                                       .setFrom(from)
