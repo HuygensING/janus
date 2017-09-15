@@ -51,6 +51,7 @@ import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.elasticsearch.index.query.QueryBuilders.wrapperQuery;
 
 /**
  * Backend that stores documents and annotations in an Elasticsearch cluster.
@@ -66,8 +67,8 @@ public class ElasticBackend implements Backend {
   private final String annotationType;
 
   private final Client client;
-  private final String documentIndex;
-  private final String documentType;
+  final String documentIndex;
+  final String documentType;
 
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.
@@ -240,7 +241,7 @@ public class ElasticBackend implements Backend {
     try {
       SearchResponse response = client.prepareSearch(documentIndex)
                                       .setTypes(documentType)
-                                      .setQuery(query == null ? matchAllQuery() : queryStringQuery(query))
+                                      .setQuery(query == null ? matchAllQuery() : wrapperQuery(query))
                                       .setFetchSource(false)
                                       // TODO scroll?
                                       .setFrom(from)
@@ -328,6 +329,23 @@ public class ElasticBackend implements Backend {
     return Response.status(idxR.status().getStatus()).entity(ann).build();
   }
 
+  private PutResult makePutResult(IndexResponse response) {
+    int status = response.status().getStatus();
+    String id = (status < 200 || status >= 300) ? null : response.getId();
+    return new PutResult(id, status);
+  }
+
+  @Override
+  public PutResult putJSON(String id, String content) throws IOException {
+    // TODO parse and check if content has body field?
+    try {
+      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(content, JSON).get();
+      return makePutResult(response);
+    } catch (VersionConflictEngineException e) {
+      return new PutResult(e.toString(), Response.Status.CONFLICT);
+    }
+  }
+
   @Override
   public PutResult putTxt(String id, String content) throws IOException {
     try {
@@ -336,13 +354,7 @@ public class ElasticBackend implements Backend {
                      .field("body", content)
                      .endObject()
       ).get();
-      int status = response.status().getStatus();
-      if (status < 200 || status >= 300) {
-        id = null;
-      } else {
-        id = response.getId();
-      }
-      return new PutResult(id, status);
+      return makePutResult(response);
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
