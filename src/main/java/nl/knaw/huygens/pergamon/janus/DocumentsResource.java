@@ -80,7 +80,7 @@ public class DocumentsResource {
     return Backend.asResponse(backend.getAnnotations(id, query, recursive));
   }
 
-  @GET
+  @POST
   @Path("search")
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Search documents using Elasticsearch",
