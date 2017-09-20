@@ -13,6 +13,8 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.container.PreMatching;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
+import java.net.URI;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -32,14 +34,23 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   private static final Logger LOG = LoggerFactory.getLogger(RequestLoggingFilter.class);
 
   private static final String MDC_COMMIT_HASH = "commit_hash";
-  private static final String MDC_ID = "id";
   private static final String MDC_ELAPSED_MS = "elapsed_ms";
+  private static final String MDC_ID = "id";
   private static final String MDC_LOG_TYPE = "type";
-  private static final String MDC_REQUEST_METHOD = "http_method";
-  private static final String MDC_REQUEST_URI = "request_uri";
+  private static final String MDC_REQUEST_AUTHORITY = "request_authority";
   private static final String MDC_REQUEST_HEADERS = "request_headers";
+  private static final String MDC_REQUEST_METHOD = "http_method";
+  private static final String MDC_REQUEST_PATH = "request_path";
+  private static final String MDC_REQUEST_QUERY = "request_query";
+  private static final String MDC_REQUEST_URI = "request_uri";
   private static final String MDC_RESPONSE_HEADERS = "response_headers";
   private static final String MDC_RESPONSE_STATUS = "response_status";
+
+  private static final List<String> MDC_REQUEST_SPECIFIC = Arrays.asList(
+    MDC_ID, MDC_ELAPSED_MS, MDC_LOG_TYPE,
+    MDC_REQUEST_AUTHORITY, MDC_REQUEST_HEADERS, MDC_REQUEST_METHOD, MDC_REQUEST_PATH, MDC_REQUEST_QUERY, MDC_REQUEST_URI,
+    MDC_RESPONSE_HEADERS, MDC_RESPONSE_STATUS
+  );
 
   private final String commitHash;
 
@@ -53,10 +64,15 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
     MDC.put(MDC_ID, UUID.randomUUID().toString());
     MDC.put(MDC_LOG_TYPE, "request");
     MDC.put(MDC_REQUEST_METHOD, context.getMethod());
-    MDC.put(MDC_REQUEST_URI, context.getUriInfo().getRequestUri().toASCIIString());
+
+    final URI requestUri = context.getUriInfo().getRequestUri();
+    MDC.put(MDC_REQUEST_URI, requestUri.toASCIIString());
+    MDC.put(MDC_REQUEST_PATH, requestUri.getPath());
+    MDC.put(MDC_REQUEST_AUTHORITY, requestUri.getAuthority());
+    MDC.put(MDC_REQUEST_QUERY, requestUri.getQuery());
     MDC.put(MDC_REQUEST_HEADERS, formatHeaders(context.getHeaders()));
 
-    LOG.info(">     " + context.getMethod() + " " + context.getUriInfo().getRequestUri().toASCIIString());
+    LOG.info(">     " + context.getMethod() + " " + requestUri.toASCIIString());
 
     context.setProperty(STOPWATCH_PROPERTY, Stopwatch.createStarted());
   }
@@ -84,7 +100,11 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
 
     LOG.debug(msg);
 
-    MDC.clear();
+    clearMdc();
+  }
+
+  private void clearMdc() {
+    MDC_REQUEST_SPECIFIC.forEach(MDC::remove); // remove only the request specific stuff
   }
 
   private String formatHeaders(final MultivaluedMap<String, String> headers) {
