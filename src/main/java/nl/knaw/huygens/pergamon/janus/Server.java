@@ -16,6 +16,7 @@ import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
@@ -94,7 +95,8 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
-    environment.jersey().register(new RequestLoggingFilter(findCommitHash()));
+    final String commitHash = findCommitHash();
+    environment.jersey().register(new RequestLoggingFilter(commitHash));
 
     environment.jersey().register(new SandboxResource());
 
@@ -109,11 +111,16 @@ public class Server extends Application<Server.Config> {
   private String findCommitHash() {
     final Optional<Properties> gitProperties = findGitProperties();
 
+    final String commitHash = gitProperties.map(git -> git.getProperty("git.commit.id"))
+                                           .orElse("NO-GIT-COMMIT-HASH-FOUND");
+
+    MDC.put("commit_hash", commitHash); // for 'main' Thread
+
     if (LOG.isDebugEnabled()) {
       LOG.debug("git.properties: {}", gitProperties);
     }
 
-    return gitProperties.map(git -> git.getProperty("git.commit.id")).orElse("NO-GIT-COMMIT-HASH-FOUND");
+    return commitHash;
   }
 
   private Optional<Properties> findGitProperties() {
