@@ -35,10 +35,11 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   private static final String MDC_REQUEST_METHOD = "http_method";
   private static final String MDC_REQUEST_URI = "request_uri";
   private static final String MDC_REQUEST_HEADERS = "request_headers";
+  private static final String MDC_LOG_TYPE = "type";
 
   @Override
   public void filter(ContainerRequestContext context) throws IOException {
-    MDC.put("type", "request");
+    MDC.put(MDC_LOG_TYPE, "request");
     MDC.put(MDC_ID, UUID.randomUUID().toString());
     MDC.put(MDC_REQUEST_METHOD, context.getMethod());
     MDC.put(MDC_REQUEST_URI, context.getUriInfo().getRequestUri().toASCIIString());
@@ -50,7 +51,7 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   @Override
   public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
     throws IOException {
-    MDC.put("type", "response");
+    MDC.put(MDC_LOG_TYPE, "response");
     String msg = "< " + responseContext.getStatus() + " " + requestContext.getMethod() + " " +
       requestContext.getUriInfo().getRequestUri().toASCIIString();
 
