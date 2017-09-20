@@ -14,10 +14,15 @@ import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
 import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
 import org.hibernate.validator.constraints.NotEmpty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
@@ -45,6 +50,8 @@ import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
+  private final Logger LOG = LoggerFactory.getLogger(Server.class);
+
   static class Config extends Configuration {
     @JsonProperty("elasticsearch")
     private ESConfig es;
@@ -87,7 +94,7 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
-    environment.jersey().register(new RequestLoggingFilter());
+    environment.jersey().register(new RequestLoggingFilter(findCommitHash()));
 
     environment.jersey().register(new SandboxResource());
 
@@ -97,6 +104,34 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new GraphQLResource(backend));
 
     backend.registerHealthChecks(environment.healthChecks());
+  }
+
+  private String findCommitHash() {
+    final Optional<Properties> gitProperties = findGitProperties();
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("git.properties: {}", gitProperties);
+    }
+
+    return gitProperties.map(git -> git.getProperty("git.commit.id")).orElse("NO-GIT-COMMIT-HASH-FOUND");
+  }
+
+  private Optional<Properties> findGitProperties() {
+    final InputStream propertyStream = getClass().getClassLoader().getResourceAsStream("git.properties");
+    if (propertyStream == null) {
+      LOG.warn("Resource \"git.properties\" not found");
+    }
+    else {
+      final Properties properties = new Properties();
+      try {
+        properties.load(propertyStream);
+        return Optional.of(properties);
+      } catch (IOException e) {
+        LOG.warn("Unable to load git.properties: {}", e);
+      }
+    }
+
+    return Optional.empty();
   }
 
   private ElasticBackend createBackend(Config config) throws IOException {

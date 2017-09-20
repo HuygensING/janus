@@ -36,15 +36,25 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   private static final String MDC_REQUEST_URI = "request_uri";
   private static final String MDC_REQUEST_HEADERS = "request_headers";
   private static final String MDC_LOG_TYPE = "type";
+  private static final String MDC_COMMIT_HASH = "commit_hash";
+
+  private final String commitHash;
+
+  public RequestLoggingFilter(String commitHash) {
+    this.commitHash = commitHash;
+  }
 
   @Override
   public void filter(ContainerRequestContext context) throws IOException {
-    MDC.put(MDC_LOG_TYPE, "request");
+    MDC.put(MDC_COMMIT_HASH, commitHash);
     MDC.put(MDC_ID, UUID.randomUUID().toString());
+    MDC.put(MDC_LOG_TYPE, "request");
     MDC.put(MDC_REQUEST_METHOD, context.getMethod());
     MDC.put(MDC_REQUEST_URI, context.getUriInfo().getRequestUri().toASCIIString());
     MDC.put(MDC_REQUEST_HEADERS, formatHeaders(context.getHeaders()));
+
     LOG.info(">     " + context.getMethod() + " " + context.getUriInfo().getRequestUri().toASCIIString());
+
     context.setProperty(STOPWATCH_PROPERTY, Stopwatch.createStarted());
   }
 
@@ -52,6 +62,7 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
     throws IOException {
     MDC.put(MDC_LOG_TYPE, "response");
+
     String msg = "< " + responseContext.getStatus() + " " + requestContext.getMethod() + " " +
       requestContext.getUriInfo().getRequestUri().toASCIIString();
 
@@ -66,6 +77,7 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
     }
 
     MDC.put("response_headers", formatHeaders(responseContext.getStringHeaders()));
+
     LOG.debug(msg);
   }
 
