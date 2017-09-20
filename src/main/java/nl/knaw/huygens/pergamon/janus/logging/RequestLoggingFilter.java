@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 @PreMatching
 @Priority(Integer.MIN_VALUE)
 public class RequestLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
-  public static final Comparator<Map.Entry<String, List<String>>> BY_KEY_IGNORING_CASE =
+  private static final Comparator<Map.Entry<String, List<String>>> BY_KEY_IGNORING_CASE =
     (e1, e2) -> e1.getKey().compareToIgnoreCase(e2.getKey());
 
   private static final String STOPWATCH_PROPERTY = RequestLoggingFilter.class.getName() + "stopwatch";
