@@ -31,13 +31,15 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestLoggingFilter.class);
 
+  private static final String MDC_COMMIT_HASH = "commit_hash";
   private static final String MDC_ID = "id";
+  private static final String MDC_ELAPSED_MS = "elapsed_ms";
+  private static final String MDC_LOG_TYPE = "type";
   private static final String MDC_REQUEST_METHOD = "http_method";
   private static final String MDC_REQUEST_URI = "request_uri";
   private static final String MDC_REQUEST_HEADERS = "request_headers";
+  private static final String MDC_RESPONSE_HEADERS = "response_headers";
   private static final String MDC_RESPONSE_STATUS = "response_status";
-  private static final String MDC_LOG_TYPE = "type";
-  private static final String MDC_COMMIT_HASH = "commit_hash";
 
   private final String commitHash;
 
@@ -74,13 +76,15 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
     } else if (!stopwatch.isRunning()) {
       LOG.warn("Stopwatch was stopped!");
     } else {
-      MDC.put("elapsed_ms", String.valueOf(stopwatch.elapsed(TimeUnit.MILLISECONDS)));
+      MDC.put(MDC_ELAPSED_MS, String.valueOf(stopwatch.elapsed(TimeUnit.MILLISECONDS)));
       msg += String.format(" (%d ms)", stopwatch.elapsed(TimeUnit.MILLISECONDS));
     }
 
-    MDC.put("response_headers", formatHeaders(responseContext.getStringHeaders()));
+    MDC.put(MDC_RESPONSE_HEADERS, formatHeaders(responseContext.getStringHeaders()));
 
     LOG.debug(msg);
+
+    MDC.clear();
   }
 
   private String formatHeaders(final MultivaluedMap<String, String> headers) {
