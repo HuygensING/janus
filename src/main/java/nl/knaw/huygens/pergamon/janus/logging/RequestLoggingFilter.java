@@ -15,20 +15,17 @@ import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.joining;
 
 @PreMatching
 @Priority(Integer.MIN_VALUE)
 public class RequestLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
-  private static final Comparator<Map.Entry<String, List<String>>> BY_KEY_IGNORING_CASE =
-    (e1, e2) -> e1.getKey().compareToIgnoreCase(e2.getKey());
-
   private static final String STOPWATCH_PROPERTY = RequestLoggingFilter.class.getName() + "stopwatch";
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestLoggingFilter.class);
@@ -48,8 +45,8 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
 
   private static final List<String> MDC_REQUEST_SPECIFIC = Arrays.asList(
     MDC_ID, MDC_ELAPSED_MS, MDC_LOG_TYPE,
-    MDC_REQUEST_AUTHORITY, MDC_REQUEST_HEADERS, MDC_REQUEST_METHOD, MDC_REQUEST_PATH, MDC_REQUEST_QUERY, MDC_REQUEST_URI,
-    MDC_RESPONSE_HEADERS, MDC_RESPONSE_STATUS
+    MDC_REQUEST_AUTHORITY, MDC_REQUEST_HEADERS, MDC_REQUEST_METHOD, MDC_REQUEST_PATH, MDC_REQUEST_QUERY,
+    MDC_REQUEST_URI, MDC_RESPONSE_HEADERS, MDC_RESPONSE_STATUS
   );
 
   private final String commitHash;
@@ -108,19 +105,12 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
   }
 
   private String formatHeaders(final MultivaluedMap<String, String> headers) {
-    final StringBuilder builder = new StringBuilder();
-    sortHeaders(headers.entrySet())
-      .forEach(entry -> builder.append(entry.getKey())
-                               .append(": ")
-                               .append(String.join(",", entry.getValue()))
-                               .append('\n'));
-    return builder.toString();
+    return headers.entrySet().stream()
+                  .sorted(comparing(Map.Entry::getKey, String.CASE_INSENSITIVE_ORDER))
+                  .map(entry -> {
+                    String values = String.join(",", entry.getValue());
+                    return String.format("%s: %s\n", entry.getKey(), values);
+                  })
+                  .collect(joining());
   }
-
-  private Set<Map.Entry<String, List<String>>> sortHeaders(final Set<Map.Entry<String, List<String>>> headers) {
-    final TreeSet<Map.Entry<String, List<String>>> sorted = new TreeSet<>(BY_KEY_IGNORING_CASE);
-    sorted.addAll(headers);
-    return sorted;
-  }
-
 }
