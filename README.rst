@@ -20,7 +20,7 @@ instance. Now compile and run Janus itself::
     mvn clean package &&
         ./target/appassembler/bin/janus server config-template.yml
 
-or use the Dockerfile, ``docker run -p 8080:8080 $(docker build -q .)``.
+or use the Dockerfile, ``docker run --net=host $(docker build -q .)``.
 To connect to an existing Elasticsearch cluster, copy ``config-template.yml``
 and edit the copy to point to your cluster.
 
