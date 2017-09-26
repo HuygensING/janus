@@ -1,0 +1,13 @@
+#!/bin/sh
+
+SOURCE_COMMIT=${SOURCE_COMMIT:-$(git rev-parse HEAD)}
+
+# https://docs.docker.com/docker-cloud/builds/advanced/
+docker build -t "$IMAGE_NAME" \
+    --build-arg CACHE_TAG="$CACHE_TAG" \
+    --build-arg COMMIT_MSG="$COMMIT_MSG" \
+    --build-arg DOCKER_REPO="$DOCKER_REPO" \
+    --build-arg IMAGE_NAME="$IMAGE_NAME" \
+    --build-arg SOURCE_BRANCH="$SOURCE_BRANCH" \
+    --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" \
+    .
