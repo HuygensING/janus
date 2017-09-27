@@ -3,8 +3,11 @@ Janus
 
 Janus stores documents and annotations on them in Elasticsearch.
 
-|build|
+|stars| |pulls| |autom| |build|
 
+.. |stars| image:: https://img.shields.io/docker/stars/huygensing/janus.svg
+.. |pulls| image:: https://img.shields.io/docker/pulls/huygensing/janus.svg
+.. |autom| image:: https://img.shields.io/docker/automated/huygensing/janus.svg
 .. |build| image:: https://img.shields.io/docker/build/huygensing/janus.svg
   
 
