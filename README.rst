@@ -21,8 +21,9 @@ default configuration file ``config-template.yml``::
     (cd elasticsearch-setup &&
         docker run -p 9200:9200 -p 9300:9300 $(docker build -q .))
 
-Edit ``janus.yml`` if you want to connect to an existing Elasticsearch
-instance. Now compile and run Janus itself::
+Copy ``config-template.yml`` to ``config.yml`` and edit it if you want to
+connect to an existing Elasticsearch instance. Now compile and run Janus
+itself::
 
     mvn clean package &&
         ./target/appassembler/bin/janus server config-template.yml
