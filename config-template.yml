@@ -22,6 +22,6 @@ logging:
 server:
   requestLog:
     appenders: [] # All requests are logged through logging.RequestLoggingFilter
-    
+
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus

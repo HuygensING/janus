@@ -4,5 +4,19 @@ elasticsearch:
   documentIndex: docs
   documentType: document
 
+logging:
+  level: INFO
+  appenders:
+    - type: console-json
+      fieldNames:
+        mdc: "mdc" # push Mapped Diagnostic Context into JSON sub field called "mdc"
+
+  loggers:
+    nl.knaw.huygens.pergamon: DEBUG
+
+server:
+  requestLog:
+    appenders: [] # All requests are logged through logging.RequestLoggingFilter
+
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus
