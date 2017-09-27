@@ -1,0 +1,25 @@
+version: '2.1'
+
+services:
+  janus:
+    image: huygensing/janus
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    links:
+      - elasticsearch
+    ports:
+      - "8080:8080"
+    entrypoint:
+      ["/usr/local/bin/janus", "server", "config-docker-compose.yml"]
+
+  elasticsearch:
+    build:
+      context: elasticsearch-setup
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    expose:
+      - "9300"
