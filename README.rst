@@ -6,10 +6,14 @@ Janus stores documents and annotations on them in Elasticsearch.
 |stars| |pulls| |autom| |build|
 
 .. |stars| image:: https://img.shields.io/docker/stars/huygensing/janus.svg
+   :target: https://hub.docker.com/r/huygensing/janus/
 .. |pulls| image:: https://img.shields.io/docker/pulls/huygensing/janus.svg
+   :target: https://hub.docker.com/r/huygensing/janus/
 .. |autom| image:: https://img.shields.io/docker/automated/huygensing/janus.svg
+   :target: https://hub.docker.com/r/huygensing/janus/
 .. |build| image:: https://img.shields.io/docker/build/huygensing/janus.svg
-  
+   :target: https://hub.docker.com/r/huygensing/janus/builds/
+
 
 Usage
 -----
