@@ -51,6 +51,7 @@ import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
+
   private final Logger LOG = LoggerFactory.getLogger(Server.class);
 
   static class Config extends Configuration {
@@ -95,7 +96,11 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
-    final String commitHash = findCommitHash();
+    final Properties buildProperties = extractGitProperties().orElse(new Properties());
+    environment.jersey().register(new AboutResource(buildProperties));
+
+    final String commitHash = extractCommitHash(buildProperties);
+    MDC.put("commit_hash", commitHash); // for 'main' Thread
     environment.jersey().register(new RequestLoggingFilter(commitHash));
 
     environment.jersey().register(new SandboxResource());
@@ -108,22 +113,11 @@ public class Server extends Application<Server.Config> {
     backend.registerHealthChecks(environment.healthChecks());
   }
 
-  private String findCommitHash() {
-    final Optional<Properties> gitProperties = findGitProperties();
-
-    final String commitHash = gitProperties.map(git -> git.getProperty("git.commit.id"))
-                                           .orElse("NO-GIT-COMMIT-HASH-FOUND");
-
-    MDC.put("commit_hash", commitHash); // for 'main' Thread
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("git.properties: {}", gitProperties);
-    }
-
-    return commitHash;
+  private String extractCommitHash(Properties properties) {
+    return properties.getProperty("git.commit.id", "NO-GIT-COMMIT-HASH-FOUND");
   }
 
-  private Optional<Properties> findGitProperties() {
+  private Optional<Properties> extractGitProperties() {
     final InputStream propertyStream = getClass().getClassLoader().getResourceAsStream("git.properties");
     if (propertyStream == null) {
       LOG.warn("Resource \"git.properties\" not found");
@@ -132,6 +126,11 @@ public class Server extends Application<Server.Config> {
       final Properties properties = new Properties();
       try {
         properties.load(propertyStream);
+
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("git.properties: {}", properties);
+        }
+
         return Optional.of(properties);
       } catch (IOException e) {
         LOG.warn("Unable to load git.properties: {}", e);
