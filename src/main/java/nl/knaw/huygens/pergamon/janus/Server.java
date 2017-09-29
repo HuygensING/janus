@@ -96,7 +96,7 @@ public class Server extends Application<Server.Config> {
 
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
-    final Properties buildProperties = extractGitProperties().orElse(new Properties());
+    final Properties buildProperties = extractBuildProperties().orElse(new Properties());
     environment.jersey().register(new AboutResource(buildProperties));
 
     final String commitHash = extractCommitHash(buildProperties);
@@ -117,10 +117,10 @@ public class Server extends Application<Server.Config> {
     return properties.getProperty("git.commit.id", "NO-GIT-COMMIT-HASH-FOUND");
   }
 
-  private Optional<Properties> extractGitProperties() {
-    final InputStream propertyStream = getClass().getClassLoader().getResourceAsStream("git.properties");
+  private Optional<Properties> extractBuildProperties() {
+    final InputStream propertyStream = getClass().getClassLoader().getResourceAsStream("build.properties");
     if (propertyStream == null) {
-      LOG.warn("Resource \"git.properties\" not found");
+      LOG.warn("Resource \"build.properties\" not found");
     }
     else {
       final Properties properties = new Properties();
@@ -128,12 +128,12 @@ public class Server extends Application<Server.Config> {
         properties.load(propertyStream);
 
         if (LOG.isDebugEnabled()) {
-          LOG.debug("git.properties: {}", properties);
+          LOG.debug("build.properties: {}", properties);
         }
 
         return Optional.of(properties);
       } catch (IOException e) {
-        LOG.warn("Unable to load git.properties: {}", e);
+        LOG.warn("Unable to load build.properties: {}", e);
       }
     }
 

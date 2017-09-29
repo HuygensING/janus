@@ -4,7 +4,7 @@ WORKDIR /build
 
 COPY pom.xml pom.xml
 COPY src/main src/main
-COPY scripts/get-commit-hash.sh get-commit-hash.sh
+COPY scripts/collect-build-info.sh collect-build-info.sh
 
 WORKDIR /
 
@@ -15,7 +15,7 @@ ARG DOCKER_REPO
 ARG IMAGE_NAME
 ARG SOURCE_BRANCH
 ARG SOURCE_COMMIT
-# The ARGs need to become environment variables for get-commit-hash.sh.
+# The ARGs need to become environment variables for collect-build-info.sh
 ENV CACHE_TAG     ${CACHE_TAG}
 ENV COMMIT_MSG    ${COMMIT_MSG}
 ENV DOCKER_REPO   ${DOCKER_REPO}
@@ -25,7 +25,7 @@ ENV SOURCE_COMMIT ${SOURCE_COMMIT}
 
 RUN cd /build \
  && mvn clean \
- && ./get-commit-hash.sh \
+ && ./collect-build-info.sh \
  && mvn package \
  && rm -f target/appassembler/bin/*.bat \
  && cp -R target/appassembler/* /usr/local \
