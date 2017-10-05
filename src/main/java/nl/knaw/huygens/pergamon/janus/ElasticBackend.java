@@ -5,6 +5,7 @@ import com.google.common.io.CharStreams;
 import io.dropwizard.elasticsearch.health.EsClusterHealthCheck;
 import io.dropwizard.elasticsearch.health.EsIndexDocsHealthCheck;
 import io.dropwizard.elasticsearch.health.EsIndexExistsHealthCheck;
+import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -30,6 +31,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -457,5 +459,18 @@ public class ElasticBackend implements Backend {
   @SuppressWarnings("unchecked")
   private static void copyAttributes(Map<String, Object> map, Annotation ann) {
     ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
+  }
+
+  /**
+   * Pass query to Elasticsearch.
+   */
+  public SearchResponse search(String query) {
+    Map q;
+    try {
+      q = Jackson.newObjectMapper().readValue(query, Map.class);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return client.prepareSearch(documentIndex).setQuery(wrapperQuery(query)).get();
   }
 }
