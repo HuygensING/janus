@@ -18,7 +18,7 @@ services:
     build:
       context: elasticsearch-setup
     healthcheck:
-      test: ["CMD", "curl", "-fI", "http://localhost:9200"]
+      test: "nc localhost 9300 < /dev/null"
       interval: 10s
       timeout: 3s
       retries: 5
