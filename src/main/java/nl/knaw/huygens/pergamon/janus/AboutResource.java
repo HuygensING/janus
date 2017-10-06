@@ -13,12 +13,16 @@ import java.util.Properties;
 @Path("about")
 public class AboutResource {
   @JsonProperty
+  public final String serviceName;
+
+  @JsonProperty
   public final String startedAt;
 
   @JsonProperty
   public final Properties buildProperties;
 
-  AboutResource(Properties buildProperties) {
+  AboutResource(String serviceName, Properties buildProperties) {
+    this.serviceName = serviceName;
     this.startedAt = Instant.now().toString();
     this.buildProperties = buildProperties;
   }

@@ -51,6 +51,7 @@ import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
+  private static final String SERVICE_NAME = "Janus";
 
   private final Logger LOG = LoggerFactory.getLogger(Server.class);
 
@@ -97,7 +98,7 @@ public class Server extends Application<Server.Config> {
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
     final Properties buildProperties = extractBuildProperties().orElse(new Properties());
-    environment.jersey().register(new AboutResource(buildProperties));
+    environment.jersey().register(new AboutResource(SERVICE_NAME, buildProperties));
 
     final String commitHash = extractCommitHash(buildProperties);
     MDC.put("commit_hash", commitHash); // for 'main' Thread
