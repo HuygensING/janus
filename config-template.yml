@@ -25,3 +25,8 @@ server:
 
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus
+
+# Location where huygensing/topmod (q.v.) is running its keyword suggestion endpoint
+# for example below, run the topmod docker like this:
+#   $ docker run -p 8090:8080 huygensing/topmod
+topModUri: http://localhost:8090/suggest

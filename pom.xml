@@ -18,6 +18,7 @@
     <maven-appassembler-plugin.version>1.10</maven-appassembler-plugin.version>
     <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
     <elastic-search.version>5.4.3</elastic-search.version>
+    <dropwizard.version>1.1.2</dropwizard.version>
   </properties>
 
   <build>
@@ -83,8 +84,14 @@
 
     <dependency>
       <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-client</artifactId>
+      <version>${dropwizard.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
-      <version>1.1.2</version>
+      <version>${dropwizard.version}</version>
     </dependency>
 
     <dependency>

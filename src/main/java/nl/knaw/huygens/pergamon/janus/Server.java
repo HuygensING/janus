@@ -3,6 +3,9 @@ package nl.knaw.huygens.pergamon.janus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Application;
 import io.dropwizard.Configuration;
+import io.dropwizard.client.ConfiguredCloseableHttpClient;
+import io.dropwizard.client.JerseyClientBuilder;
+import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
@@ -18,6 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.Invocation;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,16 +59,22 @@ import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
   schemes = {HTTP, HTTPS}
 )
 public class Server extends Application<Server.Config> {
-  private static final String SERVICE_NAME = "Janus";
-
-  private final Logger LOG = LoggerFactory.getLogger(Server.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
   static class Config extends Configuration {
+    @Valid
+    @NotNull
+    private JerseyClientConfiguration jerseyClient = new JerseyClientConfiguration();
+
     @JsonProperty("elasticsearch")
     private ESConfig es;
 
     @JsonProperty("swagger")
     private SwaggerBundleConfiguration swaggerBundleConfiguration;
+
+    @JsonProperty
+    @NotEmpty
+    private String topModUri;
   }
 
   static class ESConfig {
@@ -98,7 +112,7 @@ public class Server extends Application<Server.Config> {
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
     final Properties buildProperties = extractBuildProperties().orElse(new Properties());
-    environment.jersey().register(new AboutResource(SERVICE_NAME, buildProperties));
+    environment.jersey().register(new AboutResource(getName(), buildProperties));
 
     final String commitHash = extractCommitHash(buildProperties);
     MDC.put("commit_hash", commitHash); // for 'main' Thread
@@ -111,7 +125,14 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
+    environment.jersey().register(new SearchResource(createTopModLink(configuration, environment)));
+
     backend.registerHealthChecks(environment.healthChecks());
+  }
+
+  private WebTarget createTopModLink(Config config, Environment environment) {
+    final Client client = new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
+    return client.target(config.topModUri);
   }
 
   private String extractCommitHash(Properties properties) {
