@@ -35,8 +35,9 @@ public class SearchResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Gets search term suggestions based on an input string")
   public Response suggest(SuggestParams params) {
-    final Entity<String> entity = Entity.entity(params.query, MediaType.TEXT_PLAIN);
-    LOG.debug("params: {}, entity: {}", params, entity);
+    LOG.debug("params: {}", params);
+
+    final Entity<SuggestParams> entity = Entity.entity(params, MediaType.APPLICATION_JSON_TYPE);
 
     return target.request(MediaType.APPLICATION_JSON_TYPE).post(entity);
   }
