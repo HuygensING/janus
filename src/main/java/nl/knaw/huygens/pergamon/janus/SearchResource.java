@@ -18,6 +18,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -32,10 +33,12 @@ public class SearchResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
-  private final WebTarget target;
+  private final Client client;
+  private final String topModUri;
 
-  SearchResource(WebTarget target) {
-    this.target = target;
+  SearchResource(Client topModClient, String topModUri) {
+    this.client = topModClient;
+    this.topModUri = topModUri;
   }
 
   @POST
@@ -43,6 +46,8 @@ public class SearchResource {
   @ApiOperation(value = "Gets search term suggestions based on an input string")
   public Response suggest(SuggestParams params) {
     LOG.debug("params: {}", params);
+
+    final WebTarget target = client.target(topModUri).path("suggest");
 
     final Entity<SuggestParams> entity = Entity.entity(params, MediaType.APPLICATION_JSON_TYPE);
 
@@ -57,10 +62,12 @@ public class SearchResource {
   {
     LOG.debug("importing Model: {}", header.getFileName());
 
-    target.register(MultiPartFeature.class);
+    final WebTarget target = client.target(topModUri).path("models").register(MultiPartFeature.class);
+
     final StreamDataBodyPart dataBodyPart = new StreamDataBodyPart(header.getFileName(), stream);
     final FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
     final MultiPart multiPart = formDataMultiPart.bodyPart(dataBodyPart);
+
     target.request().post(Entity.entity(multiPart, multiPart.getMediaType()));
   }
 

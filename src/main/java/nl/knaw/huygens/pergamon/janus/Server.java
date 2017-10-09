@@ -5,6 +5,7 @@ import io.dropwizard.Application;
 import io.dropwizard.Configuration;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.client.JerseyClientConfiguration;
+import io.dropwizard.forms.MultiPartBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
@@ -25,7 +26,6 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -101,6 +101,7 @@ public class Server extends Application<Server.Config> {
         return config.swaggerBundleConfiguration;
       }
     });
+    bootstrap.addBundle(new MultiPartBundle());
   }
 
   @Override
@@ -124,15 +125,14 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
-    environment.jersey().register(new ModelsResource(new File("/tmp")));
-    // environment.jersey().register(new SearchResource(createTopModLink(configuration, environment)));
+    environment.jersey().register(new SearchResource(createTopModClient(configuration, environment),
+      configuration.topModUri));
 
     backend.registerHealthChecks(environment.healthChecks());
   }
 
-  private WebTarget createTopModLink(Config config, Environment environment) {
-    final Client client = new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
-    return client.target(config.topModUri);
+  private Client createTopModClient(Config config, Environment environment) {
+    return new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
   }
 
   private String extractCommitHash(Properties properties) {
