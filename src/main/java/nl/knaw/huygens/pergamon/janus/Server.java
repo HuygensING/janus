@@ -3,7 +3,6 @@ package nl.knaw.huygens.pergamon.janus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Application;
 import io.dropwizard.Configuration;
-import io.dropwizard.client.ConfiguredCloseableHttpClient;
 import io.dropwizard.client.JerseyClientBuilder;
 import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.setup.Bootstrap;
@@ -24,9 +23,9 @@ import org.slf4j.MDC;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -125,7 +124,8 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
-    environment.jersey().register(new SearchResource(createTopModLink(configuration, environment)));
+    environment.jersey().register(new ModelsResource(new File("/tmp")));
+    // environment.jersey().register(new SearchResource(createTopModLink(configuration, environment)));
 
     backend.registerHealthChecks(environment.healthChecks());
   }

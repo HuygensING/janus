@@ -5,6 +5,12 @@ import com.google.common.base.MoreObjects;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiModelProperty;
 import io.swagger.annotations.ApiOperation;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.glassfish.jersey.media.multipart.MultiPart;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
+import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +22,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.InputStream;
 
 @Api(SearchResource.PATH)
 @Path(SearchResource.PATH)
@@ -40,6 +47,21 @@ public class SearchResource {
     final Entity<SuggestParams> entity = Entity.entity(params, MediaType.APPLICATION_JSON_TYPE);
 
     return target.request(MediaType.APPLICATION_JSON_TYPE).post(entity);
+  }
+
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Path("model")
+  public void importModel(@FormDataParam("file") InputStream stream,
+                           @FormDataParam("file") FormDataContentDisposition header)
+  {
+    LOG.debug("importing Model: {}", header.getFileName());
+
+    target.register(MultiPartFeature.class);
+    final StreamDataBodyPart dataBodyPart = new StreamDataBodyPart(header.getFileName(), stream);
+    final FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
+    final MultiPart multiPart = formDataMultiPart.bodyPart(dataBodyPart);
+    target.request().post(Entity.entity(multiPart, multiPart.getMediaType()));
   }
 
   static class SuggestParams {
