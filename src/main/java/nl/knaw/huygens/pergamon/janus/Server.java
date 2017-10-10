@@ -8,7 +8,6 @@ import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.forms.MultiPartBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import io.dropwizard.util.Duration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.swagger.annotations.Contact;
@@ -138,7 +137,6 @@ public class Server extends Application<Server.Config> {
   }
 
   private Client createTopModClient(Config config, Environment environment) {
-    config.jerseyClient.setTimeout(Duration.seconds(5)); // TODO: migrate to config file
     return new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
   }
 

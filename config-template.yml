@@ -9,8 +9,8 @@ elasticsearch:
   documentIndex: docs
   documentType: document
 
-#jerseyClient:
-# timeout: 5000
+jerseyClient:
+  timeout: 5s
 
 logging:
   level: INFO
