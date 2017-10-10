@@ -24,6 +24,8 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 @Api(SearchResource.PATH)
 @Path(SearchResource.PATH)
@@ -57,18 +59,25 @@ public class SearchResource {
   @POST
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Path("model")
-  public void importModel(@FormDataParam("file") InputStream stream,
-                           @FormDataParam("file") FormDataContentDisposition header)
-  {
+  public Response importModel(@FormDataParam("file") InputStream stream,
+                              @FormDataParam("file") FormDataContentDisposition header) {
     LOG.debug("importing Model: {}", header.getFileName());
+    LOG.debug("header: {}", header);
 
-    final WebTarget target = client.target(topModUri).path("models").register(MultiPartFeature.class);
-
-    final StreamDataBodyPart dataBodyPart = new StreamDataBodyPart(header.getFileName(), stream);
+    final StreamDataBodyPart dataBodyPart = new StreamDataBodyPart("file", stream);
     final FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
     final MultiPart multiPart = formDataMultiPart.bodyPart(dataBodyPart);
+    WebTarget target = client.target(topModUri).path("models").register(MultiPartFeature.class);
 
-    target.request().post(Entity.entity(multiPart, multiPart.getMediaType()));
+    MediaType mediaType = multiPart.getMediaType();
+    LOG.debug("multiPart.getMediaType: {}", mediaType);
+    final Map<String, String> hackedParams = new HashMap<>(mediaType.getParameters());
+    hackedParams.put("boundary", "MyHackedBoundary");
+    MediaType hackedMediaType = new MediaType(mediaType.getType(), mediaType.getSubtype(), hackedParams);
+
+    LOG.debug("hackedMediaType: {}", hackedMediaType);
+
+    return target.request().post(Entity.entity(multiPart, hackedMediaType));
   }
 
   static class SuggestParams {

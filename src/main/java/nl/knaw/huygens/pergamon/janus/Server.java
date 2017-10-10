@@ -8,6 +8,7 @@ import io.dropwizard.client.JerseyClientConfiguration;
 import io.dropwizard.forms.MultiPartBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.dropwizard.util.Duration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.swagger.annotations.Contact;
@@ -16,6 +17,7 @@ import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
 import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +26,13 @@ import org.slf4j.MDC;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.Client;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.logging.Level;
 
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTP;
 import static io.swagger.annotations.SwaggerDefinition.Scheme.HTTPS;
@@ -63,6 +65,7 @@ public class Server extends Application<Server.Config> {
   static class Config extends Configuration {
     @Valid
     @NotNull
+    @JsonProperty("jerseyClient")
     private JerseyClientConfiguration jerseyClient = new JerseyClientConfiguration();
 
     @JsonProperty("elasticsearch")
@@ -128,10 +131,14 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new SearchResource(createTopModClient(configuration, environment),
       configuration.topModUri));
 
+    environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
+      Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
+
     backend.registerHealthChecks(environment.healthChecks());
   }
 
   private Client createTopModClient(Config config, Environment environment) {
+    config.jerseyClient.setTimeout(Duration.seconds(5)); // TODO: migrate to config file
     return new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
   }
 
