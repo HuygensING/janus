@@ -14,7 +14,7 @@ jerseyClient:
 
 logging:
   level: INFO
- appenders:
+  appenders:
    - type: console-json
      fieldNames:
        mdc: "mdc" # push Mapped Diagnostic Context into JSON sub field called "mdc"
