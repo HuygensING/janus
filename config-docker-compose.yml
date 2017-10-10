@@ -22,4 +22,4 @@ swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus
 
 # Location where huygensing/topmod (q.v.) is running its keyword suggestion endpoint
-topModUri: http://topmod:8080/suggest
+topModUri: http://topmod:8080
