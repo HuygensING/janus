@@ -5,12 +5,13 @@ import com.google.common.base.MoreObjects;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiModelProperty;
 import io.swagger.annotations.ApiOperation;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.Boundary;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.StreamDataBodyPart;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,15 +24,17 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 @Api(SearchResource.PATH)
 @Path(SearchResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
   static final String PATH = "search";
+
+  private static final String MODEL_UPLOAD_PATH = "models";
+  private static final String FILE_PARAM = "file";
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
@@ -59,25 +62,24 @@ public class SearchResource {
   @POST
   @Consumes(MediaType.MULTIPART_FORM_DATA)
   @Path("model")
-  public Response importModel(@FormDataParam("file") InputStream stream,
-                              @FormDataParam("file") FormDataContentDisposition header) {
-    LOG.debug("importing Model: {}", header.getFileName());
-    LOG.debug("header: {}", header);
+  public Response importModel(@FormDataParam(FILE_PARAM) InputStream stream) {
+    final MultiPart multiPart = new FormDataMultiPart().bodyPart(new StreamDataBodyPart(FILE_PARAM, stream));
+    final Entity<MultiPart> entry = workAroundMissingBoundaryInContentTypeHeader(multiPart);
+    return modelUploadTarget().request().post(entry);
+  }
 
-    final StreamDataBodyPart dataBodyPart = new StreamDataBodyPart("file", stream);
-    final FormDataMultiPart formDataMultiPart = new FormDataMultiPart();
-    final MultiPart multiPart = formDataMultiPart.bodyPart(dataBodyPart);
-    WebTarget target = client.target(topModUri).path("models").register(MultiPartFeature.class);
+  @NotNull
+  private Entity<MultiPart> workAroundMissingBoundaryInContentTypeHeader(MultiPart multiPart) {
+    // If boundary is not explicitly added here, DW fails to set the boundary on the
+    // "Content-Type" header (although it *does* set it on the subsequent form parts),
+    // sending out a bad HTTP request, which topmod then chokes on.
 
-    MediaType mediaType = multiPart.getMediaType();
-    LOG.debug("multiPart.getMediaType: {}", mediaType);
-    final Map<String, String> hackedParams = new HashMap<>(mediaType.getParameters());
-    hackedParams.put("boundary", "MyHackedBoundary");
-    MediaType hackedMediaType = new MediaType(mediaType.getType(), mediaType.getSubtype(), hackedParams);
+    // should just be: return Entity.entity(multiPart, multiPart.getMediaType());
+    return Entity.entity(multiPart, Boundary.addBoundary(multiPart.getMediaType()));
+  }
 
-    LOG.debug("hackedMediaType: {}", hackedMediaType);
-
-    return target.request().post(Entity.entity(multiPart, hackedMediaType));
+  private WebTarget modelUploadTarget() {
+    return client.target(topModUri).path(MODEL_UPLOAD_PATH).register(MultiPartFeature.class);
   }
 
   static class SuggestParams {
