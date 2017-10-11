@@ -15,6 +15,7 @@ import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
+import nl.knaw.huygens.pergamon.janus.healthchecks.TopModHealthCheck;
 import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
 import org.glassfish.jersey.logging.LoggingFeature;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -26,6 +27,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.core.MediaType;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -127,8 +129,9 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
-    environment.jersey().register(new SearchResource(createTopModClient(configuration, environment),
-      configuration.topModUri));
+    final Client topModClient = createTopModClient(configuration, environment);
+    environment.jersey().register(new SearchResource(topModClient, configuration.topModUri));
+    environment.healthChecks().register("topmod", new TopModHealthCheck(topModClient, configuration.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
@@ -174,4 +177,5 @@ public class Server extends Application<Server.Config> {
     }
     return backend;
   }
+
 }
