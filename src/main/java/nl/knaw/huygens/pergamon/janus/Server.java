@@ -116,7 +116,6 @@ public class Server extends Application<Server.Config> {
   @Override
   public void run(Config configuration, Environment environment) throws Exception {
     final Properties buildProperties = extractBuildProperties().orElse(new Properties());
-    environment.jersey().register(new AboutResource(getName(), buildProperties));
 
     final String commitHash = extractCommitHash(buildProperties);
     MDC.put("commit_hash", commitHash); // for 'main' Thread
@@ -131,6 +130,7 @@ public class Server extends Application<Server.Config> {
 
     final Client topModClient = createTopModClient(configuration, environment);
     environment.jersey().register(new SearchResource(topModClient, configuration.topModUri));
+    environment.jersey().register(new AboutResource(getName(), buildProperties, topModClient.target(configuration.topModUri)));
     environment.healthChecks().register("topmod", new TopModHealthCheck(topModClient, configuration.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
