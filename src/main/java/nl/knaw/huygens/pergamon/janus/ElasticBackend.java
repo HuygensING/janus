@@ -1,11 +1,11 @@
 package nl.knaw.huygens.pergamon.janus;
 
 import com.codahale.metrics.health.HealthCheckRegistry;
-import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import org.apache.http.HttpHost;
 import org.apache.http.entity.InputStreamEntity;
+import org.apache.http.entity.StringEntity;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -15,6 +15,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
@@ -27,6 +28,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -470,14 +472,16 @@ public class ElasticBackend implements Backend {
   /**
    * Pass query to Elasticsearch.
    */
-  public SearchResponse search(String query) throws IOException {
-    Map q;
+  public InputStream search(String query) throws IOException {
+    org.elasticsearch.client.Response r;
     try {
-      q = Jackson.newObjectMapper().readValue(query, Map.class);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+      r = loClient.performRequest("GET", String.format("%s/%s/_search", documentIndex, documentType),
+        Collections.emptyMap(), new StringEntity(query));
+    } catch (ResponseException e) {
+      r = e.getResponse();
     }
-    return hiClient.search(searchRequest(documentIndex).source(searchSource().query(wrapperQuery(query))));
+
+    return r.getEntity().getContent();
   }
 
   private GetResponse get(String index, String type, String id) {

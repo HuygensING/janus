@@ -17,7 +17,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
 import java.io.IOException;
+import java.io.InputStream;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -79,10 +81,10 @@ public class DocumentsResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Search documents using Elasticsearch",
     notes = "Returns \"raw\" Elasticsearch results")
-  public String query(String query) throws IOException {
+  public InputStream query(String query) throws IOException {
     // TODO generalize the search method so we don't have to cast and call toString()
     ElasticBackend eb = (ElasticBackend) backend;
-    return eb.search(query).toString();
+    return eb.search(query);
   }
 
   @POST
