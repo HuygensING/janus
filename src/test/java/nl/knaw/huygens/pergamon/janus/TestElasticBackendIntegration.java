@@ -7,6 +7,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.ws.rs.core.Response;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +46,7 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void nonExistent() throws IOException {
-    DocAndAnnotations result = backend.getWithAnnotations("nothing here", false);
+    DocAndAnnotations result = backend.getWithAnnotations("nothing-here", false);
     assertEquals(null, result);
   }
 
@@ -55,8 +56,8 @@ public class TestElasticBackendIntegration {
       "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE);
 
     // These shouldn't raise IndexNotFoundException.
-    assertEquals(null, newBackend.getWithAnnotations("nothing here", false));
-    assertEquals(new Backend.ListPage(0, 0, Collections.emptyList()), newBackend.listDocs("query", 0, 1));
+    assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));
+    assertEquals(Backend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
   }
 
   @Test

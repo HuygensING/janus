@@ -1,6 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.apache.http.HttpHost;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
@@ -12,31 +12,30 @@ import static org.junit.Assert.assertEquals;
 public class TestElasticBackend {
   @Test
   public void parseAddr() throws UnknownHostException {
-    InetSocketTransportAddress addr = ElasticBackend.parseAddr("localhost:9301");
-    assertEquals("localhost", addr.getHost());
+    HttpHost addr = ElasticBackend.parseAddr("localhost:9301");
+    assertHostEquals("localhost", addr);
     assertEquals(9301, addr.getPort());
 
     addr = ElasticBackend.parseAddr("localhost");
-    assertEquals("localhost", addr.getHost());
+    assertHostEquals("localhost", addr);
     assertEquals(9300, addr.getPort());
 
     // IPv6
     addr = ElasticBackend.parseAddr("[::1]:9300");
-    assertEquals("0:0:0:0:0:0:0:1", addr.getHost());
+    assertHostEquals("[::1]", addr);
     assertEquals(9300, addr.getPort());
 
     addr = ElasticBackend.parseAddr("[::1]");
-    assertEquals("0:0:0:0:0:0:0:1", addr.getHost());
+    assertHostEquals("[::1]", addr);
     assertEquals(9300, addr.getPort());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void invalidIPv6() throws UnknownHostException {
-    InetSocketTransportAddress addr = ElasticBackend.parseAddr("[::1");
+  private void assertHostEquals(String expected, HttpHost addr) {
+    assertEquals(expected, addr.getHostName());
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void invalidPortNumber() throws UnknownHostException {
-    InetSocketTransportAddress addr = ElasticBackend.parseAddr("localhost:0x00");
+    ElasticBackend.parseAddr("localhost:0x00");
   }
 }

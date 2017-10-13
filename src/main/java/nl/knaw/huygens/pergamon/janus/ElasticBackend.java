@@ -1,51 +1,49 @@
 package nl.knaw.huygens.pergamon.janus;
 
 import com.codahale.metrics.health.HealthCheckRegistry;
-import com.google.common.io.CharStreams;
-import io.dropwizard.elasticsearch.health.EsClusterHealthCheck;
-import io.dropwizard.elasticsearch.health.EsIndexDocsHealthCheck;
-import io.dropwizard.elasticsearch.health.EsIndexExistsHealthCheck;
 import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
-import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.apache.http.HttpHost;
+import org.apache.http.entity.InputStreamEntity;
+import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.index.IndexRequestBuilder;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
-import org.elasticsearch.transport.client.PreBuiltTransportClient;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
-import static java.util.Collections.emptyList;
 import static org.apache.commons.text.StringEscapeUtils.escapeJava;
-import static org.elasticsearch.action.DocWriteRequest.OpType.CREATE;
+import static org.elasticsearch.client.Requests.bulkRequest;
+import static org.elasticsearch.client.Requests.getRequest;
+import static org.elasticsearch.client.Requests.indexRequest;
+import static org.elasticsearch.client.Requests.searchRequest;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.common.xcontent.XContentType.JSON;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
@@ -54,6 +52,7 @@ import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.index.query.QueryBuilders.wrapperQuery;
+import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
 
 /**
  * Backend that stores documents and annotations in an Elasticsearch cluster.
@@ -68,7 +67,8 @@ public class ElasticBackend implements Backend {
   // Type name of annotations in the ES index.
   private final String annotationType;
 
-  private final Client client;
+  private final RestHighLevelClient hiClient;
+  private final RestClient loClient;
   final String documentIndex;
   final String documentType;
 
@@ -76,7 +76,7 @@ public class ElasticBackend implements Backend {
    * Construct Backend instance with a list of backing Elasticsearch connections.
    *
    * @param hosts         Hosts to connect to. These have the form addr:port,
-   *                      where the port is optional and defaults to 9300.
+   *                      where the port is optional and defaults to 9200.
    * @param documentIndex Name of the document index.
    * @param documentType  Name of the document type.
    * @throws UnknownHostException
@@ -92,24 +92,26 @@ public class ElasticBackend implements Backend {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
     }
 
+    if (hosts == null || hosts.isEmpty()) {
+      hosts = Collections.singletonList("localhost:9200");
+    }
+
     this.annotationIndex = annotationIndex;
     this.annotationType = annotationType;
     this.documentIndex = documentIndex;
     this.documentType = documentType;
 
-    TransportClient cli = new PreBuiltTransportClient(Settings.EMPTY);
-    if (hosts.isEmpty()) {
-      cli.addTransportAddress(new InetSocketTransportAddress(new InetSocketAddress("localhost", 9300)));
-    }
-    for (String host : hosts) {
-      cli.addTransportAddress(parseAddr(host));
-    }
+    loClient = RestClient.builder(hosts.stream()
+                                       .map(ElasticBackend::parseAddr)
+                                       .collect(Collectors.toList())
+                                       .toArray(new HttpHost[hosts.size()]))
+                         .build();
 
-    client = cli;
+    hiClient = new RestHighLevelClient(loClient);
   }
 
   // Parse address spec of the form <addr>[:<port>]
-  static InetSocketTransportAddress parseAddr(String addr) throws UnknownHostException {
+  static HttpHost parseAddr(String addr) {
     int port = 9300;
 
     int colon = addr.lastIndexOf(':');
@@ -126,54 +128,52 @@ public class ElasticBackend implements Backend {
       }
     }
 
-    return new InetSocketTransportAddress(new InetSocketAddress(addr, port));
+    return new HttpHost(addr, port);
   }
 
   public void registerHealthChecks(HealthCheckRegistry registry) {
-    registry.register("ES cluster health", new EsClusterHealthCheck(client));
-    registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
-    registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
+    // These need to be rewritten to use the Elasticsearch REST client.
+    // registry.register("ES cluster health", new EsClusterHealthCheck(client));
+    // registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
+    // registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
   }
 
   @Override
   public void close() throws Exception {
-    client.close();
+    loClient.close();
   }
 
-  Collection<String> getIndices() {
-    return Arrays.asList(client.admin().indices().prepareGetIndex().get().getIndices());
-  }
-
-  boolean initIndices() throws IOException {
-    final Collection<String> indices = getIndices();
-
-    if (!indices.contains(annotationIndex)) {
-      final InputStream resource = ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON);
-      final String mappingInJson = CharStreams.toString(new InputStreamReader(resource));
-      CreateIndexResponse resp = client.admin().indices().prepareCreate(annotationIndex)
-                                       .addMapping(annotationType, mappingInJson, JSON)
-                                       .get();
-
-      if (!resp.isAcknowledged()) {
+  private boolean indexExists(String index) throws IOException {
+    switch (loClient.performRequest("HEAD", index).getStatusLine().getStatusCode()) {
+      case 200:
+        return true;
+      case 404:
         return false;
-      }
+      default:
+        // Shouldn't happen: ES client should throw a ResponseException
+        throw new RuntimeException("unexpected error from Elasticsearch");
     }
+  }
 
-    if (!indices.contains(documentIndex)) {
-      return client.admin().indices().prepareCreate(documentIndex).get().isAcknowledged();
+  void initIndices() throws IOException {
+    if (!indexExists(annotationIndex)) {
+      loClient.performRequest("PUT", annotationIndex, Collections.emptyMap(),
+        new InputStreamEntity(ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON)));
     }
-
-    return true;
+    if (!indexExists(documentIndex)) {
+      org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex);
+    }
   }
 
   // For test purposes only.
-  void removeIndices() {
-    client.admin().indices().prepareDelete(annotationIndex, documentIndex).get();
+  void removeIndices() throws IOException {
+    loClient.performRequest("DELETE", "/" + annotationIndex);
+    loClient.performRequest("DELETE", "/" + documentIndex);
   }
 
   @Override
   public Annotation getAnnotation(String id) {
-    GetResponse response = client.prepareGet(annotationIndex, annotationType, id).get();
+    GetResponse response = get(annotationIndex, annotationType, id);
     if (!response.isExists()) {
       return null;
     }
@@ -183,15 +183,17 @@ public class ElasticBackend implements Backend {
   @Override
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) {
     try {
-      GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
-      if (!response.isExists()) {
+      GetResponse response = get(documentIndex, documentType, id);
+      if (response.isSourceEmpty()) {
         return null;
       }
-
       return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
         getAnnotations(id, null, recursive, true, new ArrayList<>()));
-    } catch (IndexNotFoundException e) {
-      return null; // force 404
+    } catch (ElasticsearchStatusException e) {
+      if (noSuchIndex(e)) {
+        return null;
+      }
+      throw e;
     }
   }
 
@@ -216,13 +218,18 @@ public class ElasticBackend implements Backend {
       query.must(queryStringQuery(q));
     }
 
-    SearchResponse response = client.prepareSearch(annotationIndex)
-                                    .setTypes(annotationType)
-                                    .setQuery(query)
-                                    .setFetchSource(ANNOTATION_FIELDS, null)
-                                    .addSort("order", SortOrder.ASC)
-                                    // TODO: should we scroll, or should the client scroll?
-                                    .setSize(1000).get();
+    SearchResponse response;
+    try {
+      response = hiClient.search(searchRequest(annotationIndex)
+        .types(annotationType)
+        .source(searchSource().query(query)
+                              .fetchSource(ANNOTATION_FIELDS, null)
+                              .sort("order", SortOrder.ASC)
+                              // TODO: should we scroll, or should the client scroll?
+                              .size(1000)));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
 
     List<Annotation> hits = Arrays.stream(response.getHits().getHits())
                                   .map(hit -> makeAnnotation(hit.getSourceAsMap(), hit.getId()))
@@ -241,21 +248,24 @@ public class ElasticBackend implements Backend {
   @Override
   public ListPage listDocs(@Nullable String query, int from, int count) {
     try {
-      SearchResponse response = client.prepareSearch(documentIndex)
-                                      .setTypes(documentType)
-                                      .setQuery(query == null ? matchAllQuery() : wrapperQuery(query))
-                                      .setFetchSource(false)
-                                      // TODO scroll?
-                                      .setFrom(from)
-                                      .setSize(count)
-                                      .get();
+      SearchResponse response = hiClient.search(
+        searchRequest(documentIndex)
+          .types(documentType)
+          .source(searchSource().query(query == null ? matchAllQuery() : wrapperQuery(query))
+                                .from(from)
+                                .size(count)));
 
       return new ListPage(from, response.getHits().getTotalHits(),
         Arrays.stream(response.getHits().getHits())
               .map(SearchHit::getId)
               .collect(Collectors.toList()));
-    } catch (IndexNotFoundException e) {
-      return new ListPage(0, 0, emptyList());
+    } catch (ElasticsearchStatusException e) {
+      if (noSuchIndex(e)) {
+        return ListPage.empty();
+      }
+      throw e;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
@@ -267,15 +277,8 @@ public class ElasticBackend implements Backend {
   }
 
   // prepareIndex + setOpType(CREATE)
-  private IndexRequestBuilder prepareCreate(String index, String type, @Nullable String id) {
-    IndexRequestBuilder request = client.prepareIndex(index, type, id);
-    if (id != null) {
-      // the create op explicitly requires an id to be set ... If you want to have
-      // automatic ID generation you need to use the "index" operation.
-      // https://github.com/elastic/elasticsearch/issues/21535#issuecomment-260467699
-      request.setOpType(CREATE);
-    }
-    return request;
+  private IndexRequest prepareCreate(String index, String type, @Nullable String id) {
+    return indexRequest(index).type(type).id(id);
   }
 
   @Override
@@ -283,19 +286,19 @@ public class ElasticBackend implements Backend {
     try {
       // If there's a document with the id, we annotate that, else the annotation with the id.
       // XXX we need to be smarter, e.g., address the document by index/type/id.
-      GetResponse got = client.prepareGet(documentIndex, documentType, ann.target).get();
+      GetResponse got = get(documentIndex, documentType, ann.target);
       String root;
       if (got.isExists()) {
         root = ann.target;
       } else {
-        got = client.prepareGet(annotationIndex, annotationType, ann.target).get();
+        got = get(annotationIndex, annotationType, ann.target);
         if (!got.isExists()) {
           return new PutResult(null, 404);
         }
         root = (String) got.getSourceAsMap().get("root");
       }
 
-      IndexResponse response = prepareCreate(annotationIndex, annotationType, ann.id).setSource(
+      IndexResponse response = hiClient.index(indexRequest(annotationIndex).type(annotationType).id(ann.id).source(
         jsonBuilder().startObject()
                      .field("start", ann.start)
                      .field("end", ann.end)
@@ -305,8 +308,7 @@ public class ElasticBackend implements Backend {
                      .field("source", ann.source)
                      .field("target", ann.target)
                      .field("root", root)
-                     .endObject()
-      ).get();
+                     .endObject()));
       return new PutResult(response.getId(), response.status().getStatus());
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
@@ -316,18 +318,16 @@ public class ElasticBackend implements Backend {
   @Override
   public Response setBody(String annId, String bodyId) throws IOException {
     // TODO Refactor. This is repeating the fetch on annId.
-    GetResponse getR = client.prepareGet(annotationIndex, annotationType, annId).get();
+    GetResponse getR = get(annotationIndex, annotationType, annId);
     Map<String, Object> ann = getR.getSourceAsMap();
 
-    GetResponse bodyR = client.prepareGet(documentIndex, documentType, bodyId).get();
+    GetResponse bodyR = get(documentIndex, documentType, bodyId);
     if (!bodyR.isExists()) {
       return Response.status(404).build();
     }
     ann.put("body", bodyId);
 
-    IndexResponse idxR = client.prepareIndex(annotationIndex, annotationType, annId)
-                               .setSource(ann)
-                               .get();
+    IndexResponse idxR = hiClient.index(indexRequest(annotationIndex).type(annotationType).id(annId).source(ann));
     return Response.status(idxR.status().getStatus()).entity(ann).build();
   }
 
@@ -341,7 +341,8 @@ public class ElasticBackend implements Backend {
   public PutResult putJSON(String id, String content) throws IOException {
     // TODO parse and check if content has body field?
     try {
-      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(content, JSON).get();
+      IndexResponse response =
+        hiClient.index(indexRequest(documentIndex).type(documentType).id(id).source(content, JSON));
       return makePutResult(response);
     } catch (VersionConflictEngineException e) {
       return new PutResult(e.toString(), Response.Status.CONFLICT);
@@ -351,71 +352,74 @@ public class ElasticBackend implements Backend {
   @Override
   public PutResult putTxt(String id, String content) throws IOException {
     try {
-      IndexResponse response = prepareCreate(documentIndex, documentType, id).setSource(
-        jsonBuilder().startObject()
-                     .field("body", content)
-                     .endObject()
-      ).get();
-      return makePutResult(response);
-    } catch (VersionConflictEngineException e) {
-      return new PutResult(e.toString(), Response.Status.CONFLICT);
+      if (id == null) {
+        // XXX how to let Elasticsearch determine the id?
+        // Without this step, we get:
+        // ActionRequestValidationException: an id must be provided if version type or value are set
+        id = UUID.randomUUID().toString();
+      }
+      IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
+                                                    .source(jsonBuilder().startObject()
+                                                                         .field("body", content)
+                                                                         .endObject());
+      return makePutResult(hiClient.index(req));
+    } catch (ElasticsearchStatusException e) {
+      return new PutResult(e.toString(), e.status().getStatus());
     }
   }
 
   @Override
   public PutResult putXml(TaggedCodepoints document) throws IOException {
     // TODO: handle partial failures better.
-    try {
-      String docId = document.docId;
-      IndexResponse response = prepareCreate(documentIndex, documentType, docId).setSource(
-        jsonBuilder().startObject()
-                     .field("body", document.text())
-                     .endObject()
-      ).get();
-      int status = response.status().getStatus();
-      if (status < 200 || status >= 300) {
-        return new PutResult(null, status);
-      }
+    String docId = document.docId;
+    IndexResponse response = hiClient.index(indexRequest(documentIndex)
+      .type(documentType).id(docId).create(true)
+      .source(jsonBuilder().startObject()
+                           .field("body", document.text())
+                           .endObject()));
+    int status = response.status().getStatus();
+    if (status < 200 || status >= 300) {
+      return new PutResult(null, status);
+    }
 
-      List<Tag> tags = document.tags();
-      BulkRequestBuilder bulk = client.prepareBulk();
-      for (int i = 0; i < tags.size(); i++) {
-        Tag ann = tags.get(i);
-        bulk.add(prepareCreate(annotationIndex, annotationType, ann.id)
-          .setSource(jsonBuilder()
-            .startObject()
-            .field("start", ann.start)
-            .field("end", ann.end)
-            .field("attrib", ann.attributes)
-            .field("type", ann.type)
-            .field("source", "xml")
-            .field("target", ann.target)
-            .field("root", docId)
-            // The order field is only used to sort, so that we get XML tags back
-            // in exactly the order they appeared in the original.
-            // XXX do we need this?
-            .field("order", i)
-            .field("xmlParent", ann.xmlParent)
-            .endObject()
-          ));
-      }
+    List<Tag> tags = document.tags();
+    BulkRequest bulk = bulkRequest();
+    for (int i = 0; i < tags.size(); i++) {
+      Tag ann = tags.get(i);
+      bulk.add(indexRequest(annotationIndex).type(annotationType).id(ann.id)
+                                            .create(true)
+                                            .source(jsonBuilder()
+                                              .startObject()
+                                              .field("start", ann.start)
+                                              .field("end", ann.end)
+                                              .field("attrib", ann.attributes)
+                                              .field("type", ann.type)
+                                              .field("source", "xml")
+                                              .field("target", ann.target)
+                                              .field("root", docId)
+                                              // The order field is only used to sort, so that we get XML tags back
+                                              // in exactly the order they appeared in the original.
+                                              // XXX do we need this?
+                                              .field("order", i)
+                                              .field("xmlParent", ann.xmlParent)
+                                              .endObject()
+                                            ));
+    }
 
-      BulkItemResponse[] items = bulk.get().getItems();
-      for (BulkItemResponse item : items) {
+    if (bulk.numberOfActions() > 0) {
+      for (BulkItemResponse item : hiClient.bulk(bulk)) {
         status = item.status().getStatus();
         if (status < 200 || status >= 300) {
           return new PutResult(docId, status);
         }
       }
-      return new PutResult(docId, 201);
-    } catch (VersionConflictEngineException e) {
-      return new PutResult(e.toString(), Response.Status.CONFLICT);
     }
+    return new PutResult(docId, 201);
   }
 
   @Override
   public String getXml(String id) throws IOException {
-    GetResponse response = client.prepareGet(documentIndex, documentType, id).get();
+    GetResponse response = hiClient.get(new GetRequest(documentIndex, documentType, id));
     if (!response.isExists()) {
       return null;
     }
@@ -432,18 +436,20 @@ public class ElasticBackend implements Backend {
   private static final String[] TAG_FIELDS =
     new String[]{"attrib", "start", "end", "type", "target", "xmlParent"};
 
-  private List<Tag> getTags(String id) {
+  private List<Tag> getTags(String id) throws IOException {
     BoolQueryBuilder query = boolQuery().filter(termQuery("target", id))
                                         .filter(termQuery("source", "xml"))
                                         .filter(existsQuery("xmlParent"));
 
-    SearchResponse response = client.prepareSearch(annotationIndex)
-                                    .setTypes(annotationType)
-                                    .setQuery(query)
-                                    .setFetchSource(TAG_FIELDS, null)
-                                    .addSort("order", SortOrder.ASC)
-                                    // TODO: we should scroll.
-                                    .setSize(1000).get();
+    SearchResponse response = hiClient.search(
+      new SearchRequest(annotationIndex)
+        .source(searchSource().query(query)
+                              .fetchSource(TAG_FIELDS, null)
+                              .sort("order", SortOrder.ASC)
+                              // TODO: we should scroll.
+                              .size(1000)
+        )
+        .types(annotationType));
 
     return Arrays.stream(response.getHits().getHits()).map(hit -> {
       Map<String, Object> map = hit.getSourceAsMap();
@@ -464,13 +470,25 @@ public class ElasticBackend implements Backend {
   /**
    * Pass query to Elasticsearch.
    */
-  public SearchResponse search(String query) {
+  public SearchResponse search(String query) throws IOException {
     Map q;
     try {
       q = Jackson.newObjectMapper().readValue(query, Map.class);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-    return client.prepareSearch(documentIndex).setQuery(wrapperQuery(query)).get();
+    return hiClient.search(searchRequest(documentIndex).source(searchSource().query(wrapperQuery(query))));
+  }
+
+  private GetResponse get(String index, String type, String id) {
+    try {
+      return hiClient.get(getRequest(index).type(type).id(id));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private boolean noSuchIndex(ElasticsearchStatusException e) {
+    return e.status() == RestStatus.NOT_FOUND && e.getMessage().contains("no such index");
   }
 }

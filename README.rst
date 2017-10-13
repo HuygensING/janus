@@ -23,7 +23,7 @@ Dockerfile in ``elasticsearch-setup``, which matches the settings in the
 default configuration file ``config-template.yml``::
 
     (cd elasticsearch-setup &&
-        docker run -p 9200:9200 -p 9300:9300 $(docker build -q .))
+        docker run -p 9200:9200 $(docker build -q .))
 
 Copy ``config-template.yml`` to ``config.yml`` and edit it if you want to
 connect to an existing Elasticsearch instance. Now compile and run Janus

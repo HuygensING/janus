@@ -151,8 +151,7 @@ public class Server extends Application<Server.Config> {
     final InputStream propertyStream = getClass().getClassLoader().getResourceAsStream("build.properties");
     if (propertyStream == null) {
       LOG.warn("Resource \"build.properties\" not found");
-    }
-    else {
+    } else {
       final Properties properties = new Properties();
       try {
         properties.load(propertyStream);
@@ -172,9 +171,7 @@ public class Server extends Application<Server.Config> {
 
   private ElasticBackend createBackend(Config config) throws IOException {
     final ElasticBackend backend = new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType);
-    if (!backend.initIndices()) {
-      throw new RuntimeException("Failed to initialize elastic search indices");
-    }
+    backend.initIndices();
     return backend;
   }
 

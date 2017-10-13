@@ -1,6 +1,6 @@
 elasticsearch:
   hosts:
-    - elasticsearch:9300
+    - elasticsearch:9200
   documentIndex: docs
   documentType: document
 

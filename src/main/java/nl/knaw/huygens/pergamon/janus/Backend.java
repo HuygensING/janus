@@ -9,7 +9,9 @@ import nu.xom.ParsingException;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
+
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,6 +37,10 @@ public interface Backend extends AutoCloseable {
 
     @JsonProperty
     public long total;
+
+    static ListPage empty() {
+      return new ListPage(0, 0, Collections.emptyList());
+    }
 
     ListPage(int from, long total, List<String> result) {
       this.result = result;
