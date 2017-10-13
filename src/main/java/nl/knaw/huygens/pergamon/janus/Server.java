@@ -66,7 +66,7 @@ public class Server extends Application<Server.Config> {
   static class Config extends Configuration {
     @Valid
     @NotNull
-    @JsonProperty("jerseyClient")
+    @JsonProperty
     private JerseyClientConfiguration jerseyClient = new JerseyClientConfiguration();
 
     @JsonProperty("elasticsearch")
