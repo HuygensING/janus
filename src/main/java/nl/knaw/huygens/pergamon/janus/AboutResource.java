@@ -56,7 +56,7 @@ public class AboutResource {
 
     final ObjectNode deps = mapper.createObjectNode();
     deps.set("topmod", mapper.readTree(webClient.target(topModUri).path("about").request().get(InputStream.class)));
-    deps.set("elastic", mapper.readTree(((ElasticBackend) backend).about()));
+    deps.set("elastic", mapper.readTree(backend.about()));
 
     return deps;
   }

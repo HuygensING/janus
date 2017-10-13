@@ -11,6 +11,7 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -146,6 +147,12 @@ public interface Backend extends AutoCloseable {
    * Produce reconstruction of XML document.
    */
   String getXml(String id) throws IOException;
+
+  /**
+   *  Provide information about the underlying backend
+   */
+  InputStream about() throws IOException;
+
 
   default PutResult putAnnotation(@Nullable String target, Annotation ann) throws IOException {
     if (ann.id != null) {
