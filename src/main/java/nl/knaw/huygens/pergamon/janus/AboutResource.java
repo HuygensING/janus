@@ -18,9 +18,11 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.List;
 import java.util.Properties;
 
+/**
+ * Reports information about configuration, versions of dependencies, etc.
+ */
 @Path("about")
 public class AboutResource {
   private static final Logger LOG = LoggerFactory.getLogger(AboutResource.class);
@@ -34,19 +36,18 @@ public class AboutResource {
   @JsonProperty
   public final Properties buildProperties;
 
-  private final Client client;
+  private final Backend backend;
+  private final Client webClient;
   private final String topModUri;
-  private final String esHost;
 
-  AboutResource(String serviceName, Properties buildProperties, Client client, String topModUri,
-                List<String> esHosts) {
+  AboutResource(String serviceName, Properties buildProperties, Client webClient, String topModUri,
+                Backend backend) {
     this.serviceName = serviceName;
-    this.client = client;
+    this.webClient = webClient;
     this.topModUri = topModUri;
     this.startedAt = Instant.now().toString();
     this.buildProperties = buildProperties;
-    this.esHost = esHosts.stream().findFirst().orElse("http://localhost:9200");
-    LOG.debug("esHosts: {}, esHost: {}", esHosts, esHost);
+    this.backend = backend;
   }
 
   @JsonProperty
@@ -54,8 +55,8 @@ public class AboutResource {
     final ObjectMapper mapper = Jackson.newMinimalObjectMapper();
 
     final ObjectNode deps = mapper.createObjectNode();
-    deps.set("topmod", mapper.readTree(client.target(topModUri).path("about").request().get(InputStream.class)));
-    deps.set("elastic", mapper.readTree(client.target("http://" + esHost).path("/").request().get(InputStream.class)));
+    deps.set("topmod", mapper.readTree(webClient.target(topModUri).path("about").request().get(InputStream.class)));
+    deps.set("elastic", mapper.readTree(((ElasticBackend) backend).about()));
 
     return deps;
   }
