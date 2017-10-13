@@ -3,6 +3,7 @@ package nl.knaw.huygens.pergamon.janus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.dropwizard.jackson.Jackson;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -36,29 +38,36 @@ public class AboutResource {
   @JsonProperty
   public final Properties buildProperties;
 
-  private final Backend backend;
   private final Client webClient;
-  private final String topModUri;
+  private final List<Server.ServiceConfig> services;
 
-  AboutResource(String serviceName, Properties buildProperties, Client webClient, String topModUri,
-                Backend backend) {
+  AboutResource(String serviceName, Properties buildProperties, Client webClient, List<Server.ServiceConfig> services) {
     this.serviceName = serviceName;
-    this.webClient = webClient;
-    this.topModUri = topModUri;
-    this.startedAt = Instant.now().toString();
     this.buildProperties = buildProperties;
-    this.backend = backend;
+    this.webClient = webClient;
+    this.services = services;
+    this.startedAt = Instant.now().toString();
   }
 
   @JsonProperty
-  public JsonNode getDependencies() throws IOException {
+  public JsonNode getServices() {
     final ObjectMapper mapper = Jackson.newMinimalObjectMapper();
+    final ArrayNode links = mapper.createArrayNode();
 
-    final ObjectNode deps = mapper.createObjectNode();
-    deps.set("topmod", mapper.readTree(webClient.target(topModUri).path("about").request().get(InputStream.class)));
-    deps.set("elastic", mapper.readTree(backend.about()));
+    this.services.forEach(service -> {
+      final ObjectNode node = mapper.createObjectNode();
+      try {
+        links.add(node.set(service.getName(), mapper.readTree(getAbout(service))));
+      } catch (IOException e) {
+        links.add(node.put(service.getName(), String.format("%s failed: %s", service.getUri(), e.getMessage())));
+      }
+    });
 
-    return deps;
+    return links;
+  }
+
+  private InputStream getAbout(Server.ServiceConfig service) {
+    return webClient.target(service.getUri()).request(MediaType.APPLICATION_JSON_TYPE).get(InputStream.class);
   }
 
   @GET

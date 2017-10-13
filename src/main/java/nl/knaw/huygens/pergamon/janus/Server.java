@@ -72,6 +72,9 @@ public class Server extends Application<Server.Config> {
     @JsonProperty("elasticsearch")
     private ESConfig es;
 
+    @JsonProperty
+    private List<ServiceConfig> services;
+
     @JsonProperty("swagger")
     private SwaggerBundleConfiguration swaggerBundleConfiguration;
 
@@ -91,6 +94,22 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private String documentType;
+  }
+
+  static class ServiceConfig {
+    private String name;
+
+    private String uri;
+
+    @JsonProperty
+    String getName(){
+      return name;
+    }
+
+    @JsonProperty
+    String getUri() {
+      return uri;
+    }
   }
 
   public static void main(String[] args) throws Exception {
@@ -114,7 +133,7 @@ public class Server extends Application<Server.Config> {
   }
 
   @Override
-  public void run(Config configuration, Environment environment) throws Exception {
+  public void run(Config config, Environment environment) throws Exception {
     final Properties buildProperties = extractBuildProperties().orElse(new Properties());
 
     final String commitHash = extractCommitHash(buildProperties);
@@ -123,16 +142,15 @@ public class Server extends Application<Server.Config> {
 
     environment.jersey().register(new SandboxResource());
 
-    final Backend backend = createBackend(configuration);
+    final Backend backend = createBackend(config);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
-    final Client jerseyClient = createTopModClient(configuration, environment);
-    environment.jersey().register(new SearchResource(jerseyClient, configuration.topModUri));
-    environment.jersey().register(new AboutResource(getName(), buildProperties, jerseyClient, configuration.topModUri,
-      backend));
-    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, configuration.topModUri));
+    final Client jerseyClient = createTopModClient(config, environment);
+    environment.jersey().register(new SearchResource(jerseyClient, config.topModUri));
+    environment.jersey().register(new AboutResource(getName(), buildProperties, jerseyClient, config.services));
+    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, config.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
