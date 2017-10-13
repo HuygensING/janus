@@ -128,10 +128,11 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
-    final Client topModClient = createTopModClient(configuration, environment);
-    environment.jersey().register(new SearchResource(topModClient, configuration.topModUri));
-    environment.jersey().register(new AboutResource(getName(), buildProperties, topModClient.target(configuration.topModUri)));
-    environment.healthChecks().register("topmod", new TopModHealthCheck(topModClient, configuration.topModUri));
+    final Client jerseyClient = createTopModClient(configuration, environment);
+    environment.jersey().register(new SearchResource(jerseyClient, configuration.topModUri));
+    environment.jersey().register(new AboutResource(getName(), buildProperties, jerseyClient, configuration.topModUri,
+      configuration.es.hosts));
+    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, configuration.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
