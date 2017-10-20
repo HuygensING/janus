@@ -173,6 +173,13 @@ public class ElasticBackend implements Backend {
     loClient.performRequest("DELETE", "/" + documentIndex);
   }
 
+  /**
+   * Reports information about the Elasticsearch cluster.
+   */
+  public InputStream about() throws IOException {
+    return loClient.performRequest("GET", "/").getEntity().getContent();
+  }
+
   @Override
   public Annotation getAnnotation(String id) {
     GetResponse response = get(annotationIndex, annotationType, id);

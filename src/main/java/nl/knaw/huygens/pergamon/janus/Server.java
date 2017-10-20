@@ -72,15 +72,16 @@ public class Server extends Application<Server.Config> {
     @JsonProperty("elasticsearch")
     private ESConfig es;
 
-    @JsonProperty
-    private List<ServiceConfig> services;
-
     @JsonProperty("swagger")
     private SwaggerBundleConfiguration swaggerBundleConfiguration;
 
     @JsonProperty
     @NotEmpty
-    private String topModUri;
+    String topModUri;
+
+    @JsonProperty
+    @NotEmpty
+    String frontendUri;
   }
 
   static class ESConfig {
@@ -102,7 +103,7 @@ public class Server extends Application<Server.Config> {
     private String uri;
 
     @JsonProperty
-    String getName(){
+    String getName() {
       return name;
     }
 
@@ -149,7 +150,8 @@ public class Server extends Application<Server.Config> {
 
     final Client jerseyClient = createTopModClient(config, environment);
     environment.jersey().register(new SearchResource(jerseyClient, config.topModUri));
-    environment.jersey().register(new AboutResource(getName(), buildProperties, jerseyClient, config.services));
+    environment.jersey().register(
+      new AboutResource(getName(), buildProperties, jerseyClient, config, (ElasticBackend) backend));
     environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, config.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
