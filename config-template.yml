@@ -32,6 +32,3 @@ swagger:
 # for example below, run the topmod docker like this:
 #   $ docker run -p 8090:8080 huygensing/topmod
 topModUri: http://localhost:8090
-
-# Location of the frontend supplier.
-frontendUri: http://localhost:80

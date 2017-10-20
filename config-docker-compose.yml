@@ -21,14 +21,6 @@ server:
   requestLog:
     appenders: [] # All requests are logged through logging.RequestLoggingFilter
 
-services:
-  - name: "Elastic Search"
-    uri: http://elasticsearch:9200
-  - name: "Front End"
-    uri: http://client:80/about
-  - name: "Topic Modeling"
-    uri: http://topmod:8080/about
-
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus
 

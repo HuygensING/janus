@@ -87,14 +87,14 @@ public class AboutResource {
     final Map<String, Dependency> dependencies = new TreeMap<>();
 
     dependencies.put("elasticsearch", elasticsearch::about);
-    dependencies.put("frontendSupplier", new SimpleDependency(config.frontendUri));
     dependencies.put("topmod", new SimpleDependency(config.topModUri));
 
     dependencies.forEach((name, dependency) -> {
       final ObjectNode node = mapper.createObjectNode();
       try {
         links.add(node.set(name, mapper.readTree(dependency.getInfo())));
-      } catch (IOException e) {
+      } catch (Exception e) {
+        LOG.warn(("Failed to get info for {}: {}"), name, e);
         links.add(node.put(name, String.format("failed: %s", e.getMessage())));
       }
     });

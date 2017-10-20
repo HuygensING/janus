@@ -78,10 +78,6 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     String topModUri;
-
-    @JsonProperty
-    @NotEmpty
-    String frontendUri;
   }
 
   static class ESConfig {
