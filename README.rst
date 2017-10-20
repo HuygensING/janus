@@ -18,23 +18,16 @@ Janus stores documents and annotations on them in Elasticsearch.
 Usage
 -----
 
-You need Elasticsearch to use Janus. For testing, you can use the supplied
-Dockerfile in ``elasticsearch-setup``, which matches the settings in the
-default configuration file ``config-template.yml``::
-
-    (cd elasticsearch-setup &&
-        docker run -p 9200:9200 $(docker build -q .))
-
-Copy ``config-template.yml`` to ``config.yml`` and edit it if you want to
-connect to an existing Elasticsearch instance. Now compile and run Janus
-itself::
+You need Elasticsearch to use Janus. Copy ``config-template.yml`` to
+``config.yml`` and edit it to reflect your Elasticsearch settings. The
+default settings should work if you want to do a quick test using the Docker
+Hub image (``docker run -p 9200:9200 elasticsearch:5.4-alpine``).
+Now compile and run Janus::
 
     mvn clean package &&
         ./target/appassembler/bin/janus server config-template.yml
 
 or use the Dockerfile, ``docker run --net=host $(docker build -q .)``.
-To connect to an existing Elasticsearch cluster, copy ``config-template.yml``
-and edit the copy to point to your cluster.
 
 You can now upload an XML file to Janus to have it indexed as a document
 with one annotation per XML element::
