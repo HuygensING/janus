@@ -139,7 +139,7 @@ public class Server extends Application<Server.Config> {
 
     environment.jersey().register(new SandboxResource());
 
-    final Backend backend = createBackend(config);
+    final ElasticBackend backend = createBackend(config);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new DocumentsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
@@ -147,7 +147,7 @@ public class Server extends Application<Server.Config> {
     final Client jerseyClient = createTopModClient(config, environment);
     environment.jersey().register(new SearchResource(jerseyClient, config.topModUri));
     environment.jersey().register(
-      new AboutResource(getName(), buildProperties, jerseyClient, config, (ElasticBackend) backend));
+      new AboutResource(getName(), buildProperties, jerseyClient, config, backend));
     environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, config.topModUri));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),

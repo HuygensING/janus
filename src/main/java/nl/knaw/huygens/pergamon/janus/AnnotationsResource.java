@@ -17,6 +17,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -28,9 +29,9 @@ public class AnnotationsResource {
 
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
-  private final Backend backend;
+  private final ElasticBackend backend;
 
-  AnnotationsResource(Backend backend) {
+  AnnotationsResource(ElasticBackend backend) {
     this.backend = backend;
   }
 
@@ -42,7 +43,7 @@ public class AnnotationsResource {
     @ApiResponse(code = 404, message = "Annotation not found")
   })
   public Response get(@PathParam("id") String id) {
-    return Backend.asResponse(backend.getAnnotation(id));
+    return ElasticBackend.asResponse(backend.getAnnotation(id));
   }
 
   @PUT
@@ -70,7 +71,7 @@ public class AnnotationsResource {
   @POST
   @Path("{id}/annotations")
   @Consumes(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Add an annotation on an annotation", response = Backend.PutResult.class)
+  @ApiOperation(value = "Add an annotation on an annotation", response = ElasticBackend.PutResult.class)
   public Response putAnnotation(@PathParam("id") String id, Annotation ann) throws IOException {
     return responseBuilder.forResult(backend.putAnnotation(id, ann)).build();
   }

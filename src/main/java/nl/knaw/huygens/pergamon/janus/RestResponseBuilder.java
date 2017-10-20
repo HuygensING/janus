@@ -5,13 +5,13 @@ import javax.ws.rs.core.UriBuilder;
 
 class RestResponseBuilder {
   private final UriBuilder uriBuilder;
-  private Backend.PutResult result;
+  private ElasticBackend.PutResult result;
 
   RestResponseBuilder(String base) {
     uriBuilder = UriBuilder.fromPath(base).path("{id}");
   }
 
-  RestResponseBuilder forResult(Backend.PutResult result) {
+  RestResponseBuilder forResult(ElasticBackend.PutResult result) {
     this.result = result;
     return this;
   }

@@ -33,20 +33,20 @@ public class DocumentsResource {
 
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
-  private final Backend backend;
+  private final ElasticBackend backend;
 
-  DocumentsResource(Backend backend) {
+  DocumentsResource(ElasticBackend backend) {
     this.backend = backend;
   }
 
   @GET
   @ApiOperation(value = "List of document ids in the index",
     notes = "Paginated; counting starts at 0. Parameter q expects Lucene query syntax.",
-    response = Backend.ListPage.class)
+    response = ElasticBackend.ListPage.class)
   public Response index(@QueryParam("q") String query,
                         @QueryParam("from") @DefaultValue("0") int from,
                         @QueryParam("total") @DefaultValue("100") int count) {
-    return Backend.asResponse(backend.listDocs(query, from, count));
+    return ElasticBackend.asResponse(backend.listDocs(query, from, count));
   }
 
   @GET
@@ -58,7 +58,7 @@ public class DocumentsResource {
   })
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id,
                       @QueryParam("recursive") @DefaultValue("true") boolean recursive) throws IOException {
-    return Backend.asResponse(backend.getWithAnnotations(id, recursive));
+    return ElasticBackend.asResponse(backend.getWithAnnotations(id, recursive));
   }
 
   @GET
@@ -73,7 +73,7 @@ public class DocumentsResource {
                                  @ApiParam(value = "Lucene style query string")
                                  @QueryParam("q") String query) {
     // TODO distinguish between id not found (404) and no annotations for id (empty list)
-    return Backend.asResponse(backend.getAnnotations(id, query, recursive));
+    return ElasticBackend.asResponse(backend.getAnnotations(id, query, recursive));
   }
 
   @POST
@@ -82,15 +82,13 @@ public class DocumentsResource {
   @ApiOperation(value = "Search documents using Elasticsearch",
     notes = "Returns \"raw\" Elasticsearch results")
   public InputStream query(String query) throws IOException {
-    // TODO generalize the search method so we don't have to cast and call toString()
-    ElasticBackend eb = (ElasticBackend) backend;
-    return eb.search(query);
+    return backend.search(query);
   }
 
   @POST
   @Path("{id}/annotations")
   @Consumes(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Add an annotation to a specific document", response = Backend.PutResult.class)
+  @ApiOperation(value = "Add an annotation to a specific document", response = ElasticBackend.PutResult.class)
   public Response putAnnotation(@ApiParam(DOCUMENT_ID) @PathParam("id") String id, Annotation ann) throws IOException {
     return responseBuilder.forResult(backend.putAnnotation(id, ann)).build();
   }
@@ -131,7 +129,7 @@ public class DocumentsResource {
     notes = "Only works for documents that were originally uploaded as XML and " +
       "only annotations deriving from tags are included.")
   public Response getXml(@PathParam("id") String id) throws IOException {
-    return Backend.asResponse(backend.getXml(id));
+    return ElasticBackend.asResponse(backend.getXml(id));
   }
 
   @POST

@@ -5,7 +5,7 @@ import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.schema.GraphQLSchema;
 import io.swagger.annotations.Api;
-import nl.knaw.huygens.pergamon.janus.Backend;
+import nl.knaw.huygens.pergamon.janus.ElasticBackend;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
@@ -22,10 +22,10 @@ import static graphql.GraphQL.newGraphQL;
 public class GraphQLResource {
   static final String PATH = "graphql";
 
-  private final Backend backend;
+  private final ElasticBackend backend;
   private final GraphQLSchema schema;
 
-  public GraphQLResource(Backend backend) {
+  public GraphQLResource(ElasticBackend backend) {
     this.backend = backend;
     schema = SchemaParser.newParser()
                          .file("schema.graphqls")

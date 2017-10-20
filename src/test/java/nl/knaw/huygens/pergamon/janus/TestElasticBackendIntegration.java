@@ -52,17 +52,17 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void noIndexYet() throws IOException {
-    Backend newBackend = new ElasticBackend(Collections.emptyList(),
+    ElasticBackend newBackend = new ElasticBackend(Collections.emptyList(),
       "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE);
 
     // These shouldn't raise IndexNotFoundException.
     assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));
-    assertEquals(Backend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
+    assertEquals(ElasticBackend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
   }
 
   @Test
   public void txtAndAnnotation() throws Exception {
-    Backend.PutResult result = backend.putTxt("some_id", "some text");
+    ElasticBackend.PutResult result = backend.putTxt("some_id", "some text");
     assertEquals(201, result.status);
     assertEquals("some_id", result.id);
 
@@ -93,7 +93,7 @@ public class TestElasticBackendIntegration {
     String docId = "blabla!";
     String text = "<msg num=\"1\">hello, <xml num=\"2\" attr=\"extra\"/> world!</msg>";
 
-    Backend.PutResult result = backend.putXml(docId, text);
+    ElasticBackend.PutResult result = backend.putXml(docId, text);
     assertEquals(201, result.status);
 
     DocAndAnnotations doc = retry(() -> {
@@ -119,7 +119,7 @@ public class TestElasticBackendIntegration {
     assertNotNull(docId);
 
     Annotation ann1 = new Annotation(0, 21, docId, "level1", null, "test", null);
-    Backend.PutResult result = backend.putAnnotation(ann1);
+    ElasticBackend.PutResult result = backend.putAnnotation(ann1);
     assertEquals(result.status, 201);
     assertNotNull(result.id);
     ann1.id = result.id;
@@ -139,7 +139,7 @@ public class TestElasticBackendIntegration {
     assertNotNull(docId);
 
     Annotation ann = new Annotation(0, 4, docId, "note", null, "test", null);
-    Backend.PutResult result = backend.putAnnotation(ann);
+    ElasticBackend.PutResult result = backend.putAnnotation(ann);
     assertEquals(result.status, 201);
     String annid = result.id;
     assertNotNull(annid);
@@ -181,7 +181,7 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void xmlNullId() throws Exception {
-    Backend.PutResult result = backend.putXml(null, "<hello>world</hello>");
+    ElasticBackend.PutResult result = backend.putXml(null, "<hello>world</hello>");
     assertEquals(201, result.status);
     assertNotNull(result.id);
   }

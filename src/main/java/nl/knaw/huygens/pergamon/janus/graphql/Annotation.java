@@ -1,7 +1,7 @@
 package nl.knaw.huygens.pergamon.janus.graphql;
 
 import graphql.schema.DataFetchingEnvironment;
-import nl.knaw.huygens.pergamon.janus.Backend;
+import nl.knaw.huygens.pergamon.janus.ElasticBackend;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,7 +25,7 @@ public class Annotation {
   }
 
   public Document getBody(DataFetchingEnvironment env) {
-    Backend backend = env.getContext();
+    ElasticBackend backend = env.getContext();
     return Document.from(backend, annotation.body);
   }
 

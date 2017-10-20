@@ -1,15 +1,15 @@
 package nl.knaw.huygens.pergamon.janus.graphql;
 
 import com.coxautodev.graphql.tools.GraphQLQueryResolver;
-import nl.knaw.huygens.pergamon.janus.Backend;
+import nl.knaw.huygens.pergamon.janus.ElasticBackend;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Query implements GraphQLQueryResolver {
-  private final Backend backend;
+  private final ElasticBackend backend;
 
-  public Query(Backend backend) {
+  public Query(ElasticBackend backend) {
     this.backend = backend;
   }
 
