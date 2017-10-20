@@ -24,8 +24,8 @@ server:
 services:
   - name: "Elastic Search"
     uri: http://elasticsearch:9200
-  - name: "Front End"
-    uri: http://client:80/about
+# - name: "Front End"
+#   uri: http://client:80/about
   - name: "Topic Modeling"
     uri: http://topmod:8080/about
 
