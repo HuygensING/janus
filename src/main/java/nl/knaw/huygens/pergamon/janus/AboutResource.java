@@ -19,8 +19,9 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
 
 /**
  * Reports information about configuration, versions of dependencies, etc.
@@ -38,36 +39,67 @@ public class AboutResource {
   @JsonProperty
   public final Properties buildProperties;
 
-  private final Client webClient;
-  private final List<Server.ServiceConfig> services;
+  // Endpoint of a dependency that we query to get information to pass on.
+  private interface Dependency {
+    InputStream getInfo() throws IOException;
+  }
 
-  AboutResource(String serviceName, Properties buildProperties, Client webClient, List<Server.ServiceConfig> services) {
+  // Dependency where we can query a base url + "/about".
+  private class SimpleDependency implements Dependency {
+    private final String url;
+
+    SimpleDependency(String url) {
+      this.url = url;
+    }
+
+    @Override
+    public InputStream getInfo() throws IOException {
+      return webClient.target(url).path("about").request(MediaType.APPLICATION_JSON_TYPE).get(InputStream.class);
+    }
+  }
+
+  private final Client webClient;
+  private final ElasticBackend elasticsearch;
+  private final Server.Config config;
+
+  /**
+   * @param serviceName     Name of this service (probably Janus).
+   * @param buildProperties Our build properties.
+   * @param webClient       Web client, used to perform requests.
+   * @param config          Server configuration.
+   * @param elastic         Elasticsearch client.
+   */
+  AboutResource(String serviceName, Properties buildProperties, Client webClient, Server.Config config,
+                ElasticBackend elastic) {
+    this.elasticsearch = elastic;
     this.serviceName = serviceName;
     this.buildProperties = buildProperties;
     this.webClient = webClient;
-    this.services = services;
+    this.config = config;
     this.startedAt = Instant.now().toString();
   }
 
   @JsonProperty
-  public JsonNode getServices() {
+  public JsonNode getConfig() {
     final ObjectMapper mapper = Jackson.newMinimalObjectMapper();
     final ArrayNode links = mapper.createArrayNode();
 
-    this.services.forEach(service -> {
+    final Map<String, Dependency> dependencies = new TreeMap<>();
+
+    dependencies.put("elasticsearch", elasticsearch::about);
+    dependencies.put("topmod", new SimpleDependency(config.topModUri));
+
+    dependencies.forEach((name, dependency) -> {
       final ObjectNode node = mapper.createObjectNode();
       try {
-        links.add(node.set(service.getName(), mapper.readTree(getAbout(service))));
-      } catch (IOException e) {
-        links.add(node.put(service.getName(), String.format("%s failed: %s", service.getUri(), e.getMessage())));
+        links.add(node.set(name, mapper.readTree(dependency.getInfo())));
+      } catch (Throwable e) {
+        LOG.warn(("Failed to get info for {}: {}"), name, e);
+        links.add(node.put(name, String.format("failed: %s", e.getMessage())));
       }
     });
 
     return links;
-  }
-
-  private InputStream getAbout(Server.ServiceConfig service) {
-    return webClient.target(service.getUri()).request(MediaType.APPLICATION_JSON_TYPE).get(InputStream.class);
   }
 
   @GET
@@ -75,5 +107,4 @@ public class AboutResource {
   public Response get() {
     return Response.ok(this).build();
   }
-
 }
