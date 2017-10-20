@@ -54,7 +54,7 @@ public class AboutResource {
 
     @Override
     public InputStream getInfo() throws IOException {
-      return webClient.target(url + "/about").request(MediaType.APPLICATION_JSON_TYPE).get(InputStream.class);
+      return webClient.target(url).path("about").request(MediaType.APPLICATION_JSON_TYPE).get(InputStream.class);
     }
   }
 
