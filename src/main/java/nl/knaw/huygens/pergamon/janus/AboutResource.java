@@ -93,7 +93,7 @@ public class AboutResource {
       final ObjectNode node = mapper.createObjectNode();
       try {
         links.add(node.set(name, mapper.readTree(dependency.getInfo())));
-      } catch (Exception e) {
+      } catch (Throwable e) {
         LOG.warn(("Failed to get info for {}: {}"), name, e);
         links.add(node.put(name, String.format("failed: %s", e.getMessage())));
       }
