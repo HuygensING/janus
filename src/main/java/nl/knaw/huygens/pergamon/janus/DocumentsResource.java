@@ -19,7 +19,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -81,8 +80,9 @@ public class DocumentsResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @ApiOperation(value = "Search documents using Elasticsearch",
     notes = "Returns \"raw\" Elasticsearch results")
-  public InputStream query(String query) throws IOException {
-    return backend.search(query);
+  public Response query(String query) throws IOException {
+    org.elasticsearch.client.Response er = backend.search(query);
+    return Response.status(er.getStatusLine().getStatusCode()).entity(er.getEntity().getContent()).build();
   }
 
   @POST

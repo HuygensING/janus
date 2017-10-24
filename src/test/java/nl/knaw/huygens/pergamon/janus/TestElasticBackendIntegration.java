@@ -10,7 +10,6 @@ import org.junit.Test;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -191,15 +190,26 @@ public class TestElasticBackendIntegration {
     return r;
   }
 
+  private static String q(String s) {
+    return s.replace('`', '"');
+  }
+
   @Test
   public void search() throws Exception {
     // Both documents and queries must allow full UTF-8.
     put("René Descartes");
     put("π = 3.14159");
 
-    InputStream r = backend.search("{`query`: {`query_string`: {`query`: `René OR π`}}}".replace('`', '"'));
-    Map m = Jackson.newObjectMapper().readValue(r, Map.class);
+    org.elasticsearch.client.Response r = backend.search(q("{`query`: {`query_string`: {`query`: `René OR π`}}}"));
+    Map m = Jackson.newObjectMapper().readValue(r.getEntity().getContent(), Map.class);
     assertFalse(m.containsKey("error"));
+
+    // Elasticsearch status codes should be passed on.
+    r = backend.search(q("{`foo`: `bar`}"));
+    assertEquals(400, r.getStatusLine().getStatusCode());
+
+    r = backend.search("{foo}");
+    assertEquals(500, r.getStatusLine().getStatusCode());
   }
 
   @Test

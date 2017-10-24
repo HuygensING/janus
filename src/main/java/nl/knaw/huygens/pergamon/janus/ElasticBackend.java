@@ -596,7 +596,7 @@ public class ElasticBackend implements AutoCloseable {
   /**
    * Pass query to Elasticsearch.
    */
-  public InputStream search(String query) throws IOException {
+  public org.elasticsearch.client.Response search(String query) throws IOException {
     org.elasticsearch.client.Response r;
     try {
       r = loClient.performRequest("GET", String.format("%s/%s/_search", documentIndex, documentType),
@@ -604,8 +604,7 @@ public class ElasticBackend implements AutoCloseable {
     } catch (ResponseException e) {
       r = e.getResponse();
     }
-
-    return r.getEntity().getContent();
+    return r;
   }
 
   private GetResponse get(String index, String type, String id) {
