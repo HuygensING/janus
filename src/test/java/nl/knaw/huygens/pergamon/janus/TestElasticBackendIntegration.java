@@ -1,6 +1,7 @@
 package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
+import io.dropwizard.jackson.Jackson;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -9,10 +10,13 @@ import org.junit.Test;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
@@ -177,6 +181,25 @@ public class TestElasticBackendIntegration {
       Annotation got = backend.getAnnotation(ann.id);
       assertEquals(ann, got);
     });
+  }
+
+  private static ElasticBackend.PutResult put(String s) throws Exception {
+    ElasticBackend.PutResult r = backend.putTxt(null, s);
+    if (r.status != 201) {
+      throw new Exception(String.format("failure: %d, %s", r.status, r.message));
+    }
+    return r;
+  }
+
+  @Test
+  public void search() throws Exception {
+    // Both documents and queries must allow full UTF-8.
+    put("René Descartes");
+    put("π = 3.14159");
+
+    InputStream r = backend.search("{`query`: {`query_string`: {`query`: `René OR π`}}}".replace('`', '"'));
+    Map m = Jackson.newObjectMapper().readValue(r, Map.class);
+    assertFalse(m.containsKey("error"));
   }
 
   @Test

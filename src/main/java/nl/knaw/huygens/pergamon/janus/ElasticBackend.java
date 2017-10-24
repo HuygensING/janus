@@ -51,6 +51,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.apache.commons.text.StringEscapeUtils.escapeJava;
+import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.elasticsearch.client.Requests.bulkRequest;
 import static org.elasticsearch.client.Requests.getRequest;
 import static org.elasticsearch.client.Requests.indexRequest;
@@ -599,7 +600,7 @@ public class ElasticBackend implements AutoCloseable {
     org.elasticsearch.client.Response r;
     try {
       r = loClient.performRequest("GET", String.format("%s/%s/_search", documentIndex, documentType),
-        Collections.emptyMap(), new StringEntity(query));
+        Collections.emptyMap(), new StringEntity(query, APPLICATION_JSON));
     } catch (ResponseException e) {
       r = e.getResponse();
     }
