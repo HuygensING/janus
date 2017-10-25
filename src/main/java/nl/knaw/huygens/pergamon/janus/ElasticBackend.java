@@ -414,6 +414,11 @@ public class ElasticBackend implements AutoCloseable {
       return new PutResult(response.getId(), response.status().getStatus());
     } catch (VersionConflictEngineException e) {
       return new PutResult(null, CONFLICT, e.toString());
+    } catch (Throwable e) {
+      if ("error while performing request".equals(e.getMessage())) {
+        e = e.getCause();
+      }
+      return new PutResult(null, 500, e.toString());
     }
   }
 
