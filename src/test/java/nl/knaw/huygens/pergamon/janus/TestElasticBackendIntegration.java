@@ -2,7 +2,6 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
 import io.dropwizard.jackson.Jackson;
-import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -10,6 +9,7 @@ import org.junit.Test;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +30,10 @@ public class TestElasticBackendIntegration {
 
   @BeforeClass
   public static void connect() throws IOException {
-    backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
     try {
+      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
       backend.initIndices();
-    } catch (NoNodeAvailableException e) {
+    } catch (ConnectException e) {
       available = false;
     }
     assumeTrue(available);
