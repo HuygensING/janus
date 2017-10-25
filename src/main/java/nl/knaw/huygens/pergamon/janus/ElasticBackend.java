@@ -10,6 +10,7 @@ import nu.xom.ParsingException;
 import org.apache.http.HttpHost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -412,7 +413,7 @@ public class ElasticBackend implements AutoCloseable {
                      .endObject()));
       return new PutResult(response.getId(), response.status().getStatus());
     } catch (VersionConflictEngineException e) {
-      return new PutResult(e.toString(), CONFLICT);
+      return new PutResult(null, CONFLICT, e.toString());
     }
   }
 
@@ -459,8 +460,8 @@ public class ElasticBackend implements AutoCloseable {
       IndexResponse response =
         hiClient.index(indexRequest(documentIndex).type(documentType).id(id).source(content, JSON));
       return makePutResult(response);
-    } catch (VersionConflictEngineException e) {
-      return new PutResult(e.toString(), CONFLICT);
+    } catch (ElasticsearchException e) {
+      return new PutResult(id, e.status().getStatus(), e.toString());
     }
   }
 
