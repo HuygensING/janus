@@ -415,10 +415,7 @@ public class ElasticBackend implements AutoCloseable {
     } catch (VersionConflictEngineException e) {
       return new PutResult(null, CONFLICT, e.toString());
     } catch (Throwable e) {
-      if ("error while performing request".equals(e.getMessage())) {
-        e = e.getCause();
-      }
-      return new PutResult(null, 500, e.toString());
+      return errorResult(e);
     }
   }
 
@@ -467,6 +464,8 @@ public class ElasticBackend implements AutoCloseable {
       return makePutResult(response);
     } catch (ElasticsearchException e) {
       return new PutResult(id, e.status().getStatus(), e.toString());
+    } catch (Throwable e) {
+      return errorResult(e);
     }
   }
 
@@ -611,6 +610,13 @@ public class ElasticBackend implements AutoCloseable {
       r = e.getResponse();
     }
     return r;
+  }
+
+  private PutResult errorResult(Throwable e) {
+    if ("error while performing request".equals(e.getMessage())) {
+      e = e.getCause();
+    }
+    return new PutResult(null, 500, e.toString());
   }
 
   private GetResponse get(String index, String type, String id) {
