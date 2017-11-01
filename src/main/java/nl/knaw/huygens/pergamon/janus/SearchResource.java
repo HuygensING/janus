@@ -32,7 +32,9 @@ import java.io.InputStream;
 public class SearchResource {
   static final String PATH = "search";
 
-  private static final String MODEL_UPLOAD_PATH = "models";
+  private static final String TOPIC_MODELER_SUGGESTION_PATH = "suggest";
+  private static final String TOPIC_MODELER_UPLOAD_PATH = "models";
+
   private static final String FILE_PARAM = "file";
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
@@ -49,7 +51,7 @@ public class SearchResource {
   public Response suggest(SuggestParams params) {
     LOG.debug("params: {}", params);
 
-    final WebTarget target = modeler.path("suggest");
+    final WebTarget target = modeler.path(TOPIC_MODELER_SUGGESTION_PATH);
 
     final Entity<SuggestParams> entity = Entity.entity(params, MediaType.APPLICATION_JSON_TYPE);
 
@@ -76,7 +78,7 @@ public class SearchResource {
   }
 
   private WebTarget modelUploadTarget() {
-    return modeler.path(MODEL_UPLOAD_PATH).register(MultiPartFeature.class);
+    return modeler.path(TOPIC_MODELER_UPLOAD_PATH).register(MultiPartFeature.class);
   }
 
   static class SuggestParams {
