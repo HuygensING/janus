@@ -5,6 +5,9 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import nu.xom.Document;
+import nu.xom.Element;
+import nu.xom.Text;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -19,6 +22,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -58,6 +62,20 @@ public class DocumentsResource {
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id,
                       @QueryParam("recursive") @DefaultValue("true") boolean recursive) throws IOException {
     return ElasticBackend.asResponse(backend.getWithAnnotations(id, recursive));
+  }
+
+  @GET
+  @Path("{id}/keywords")
+  @Produces(MediaType.APPLICATION_XML)
+  public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) {
+    final Optional<DocAndAnnotations> doc = Optional.ofNullable(backend.getWithAnnotations(id, false));
+    return ElasticBackend.asResponse(doc.map(this::toXML));
+  }
+
+  private String toXML(DocAndAnnotations docAndAnnotations) {
+    final Element root = new Element("hack");
+    root.appendChild(new Text(docAndAnnotations.text));
+    return new Document(root).toXML();
   }
 
   @GET
