@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -254,6 +255,24 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   /**
+   * Find the document with the given id.
+   */
+  public Optional<String> findDocument(String id) {
+    try {
+      final GetResponse response = get(documentIndex, documentType, id);
+      if (response.isSourceEmpty()) {
+        return Optional.empty();
+      }
+      return Optional.of((String) response.getSourceAsMap().get("body"));
+    } catch (ElasticsearchStatusException e) {
+      if (noSuchIndex(e)) {
+        return Optional.empty();
+      }
+      throw  e;
+    }
+  }
+
+  /**
    * Retrieve the document with the given id and its annotations.
    * <p>
    * Returns null if no document has the given id.
@@ -261,19 +280,13 @@ public class ElasticBackend implements AutoCloseable {
    * If recursive, get annotations on annotations as well.
    */
   public DocAndAnnotations getWithAnnotations(String id, boolean recursive) {
-    try {
-      GetResponse response = get(documentIndex, documentType, id);
-      if (response.isSourceEmpty()) {
-        return null;
-      }
-      return new DocAndAnnotations(id, (String) response.getSourceAsMap().get("body"),
-        getAnnotations(id, null, recursive, true, new ArrayList<>()));
-    } catch (ElasticsearchStatusException e) {
-      if (noSuchIndex(e)) {
-        return null;
-      }
-      throw e;
-    }
+    return findDocument(id).map(body -> addAnnotations(id, body, recursive))
+                           .orElse(null);
+  }
+
+  private DocAndAnnotations addAnnotations(String id, String body, boolean recursive) {
+    final List<Annotation> annotations = getAnnotations(id, null, recursive, true, new ArrayList<>());
+    return new DocAndAnnotations(id, body, annotations);
   }
 
   /**

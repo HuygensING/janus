@@ -24,7 +24,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
-import java.util.Optional;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
@@ -33,6 +32,8 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 @Produces(MediaType.APPLICATION_JSON)
 public class DocumentsResource {
   static final String PATH = "documents";
+
+  private static final String TEXT_MODELER_KEYWORDS_EXTRACTION_PATH = "keywords";
 
   private static final String DOCUMENT_ID = "document ID";
   private static final String XML_NOTES =
@@ -72,24 +73,23 @@ public class DocumentsResource {
 
   @GET
   @Path("{id}/keywords")
-  @Produces(MediaType.APPLICATION_JSON)
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) {
-    final Optional<DocAndAnnotations> doc = Optional.ofNullable(backend.getWithAnnotations(id, false));
-    return doc.map(this::toXML)
-              .map(this::extractKeywords)
-              .orElse(Response.status(NOT_FOUND).build());
+    return backend.findDocument(id)
+                  .map(this::toXML)
+                  .map(this::extractKeywords)
+                  .orElse(Response.status(NOT_FOUND).build());
   }
 
-  private Response extractKeywords(String docAsXml) {
-    return modeler.path("keywords")
-                  .request(MediaType.APPLICATION_JSON_TYPE)
-                  .post(Entity.entity(docAsXml, MediaType.APPLICATION_XML_TYPE));
-  }
-
-  private String toXML(DocAndAnnotations docAndAnnotations) {
+  private Entity<String> toXML(String body) {
     final Element root = new Element("hack");
-    root.appendChild(new Text(docAndAnnotations.text));
-    return new Document(root).toXML();
+    root.appendChild(new Text(body));
+    return Entity.entity(new Document(root).toXML(), MediaType.APPLICATION_XML_TYPE);
+  }
+
+  private Response extractKeywords(Entity docAsXml) {
+    return modeler.path(TEXT_MODELER_KEYWORDS_EXTRACTION_PATH)
+                  .request(MediaType.APPLICATION_JSON_TYPE)
+                  .post(docAsXml);
   }
 
   @GET
