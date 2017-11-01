@@ -18,11 +18,15 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
 import java.util.Optional;
+
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -37,9 +41,11 @@ public class DocumentsResource {
   private final RestResponseBuilder responseBuilder = new RestResponseBuilder(PATH);
 
   private final ElasticBackend backend;
+  private final WebTarget modeler;
 
-  DocumentsResource(ElasticBackend backend) {
+  DocumentsResource(ElasticBackend backend, WebTarget modeler) {
     this.backend = backend;
+    this.modeler = modeler;
   }
 
   @GET
@@ -66,10 +72,18 @@ public class DocumentsResource {
 
   @GET
   @Path("{id}/keywords")
-  @Produces(MediaType.APPLICATION_XML)
+  @Produces(MediaType.APPLICATION_JSON)
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) {
     final Optional<DocAndAnnotations> doc = Optional.ofNullable(backend.getWithAnnotations(id, false));
-    return ElasticBackend.asResponse(doc.map(this::toXML));
+    return doc.map(this::toXML)
+              .map(this::extractKeywords)
+              .orElse(Response.status(NOT_FOUND).build());
+  }
+
+  private Response extractKeywords(String docAsXml) {
+    return modeler.path("keywords")
+                  .request(MediaType.APPLICATION_JSON_TYPE)
+                  .post(Entity.entity(docAsXml, MediaType.APPLICATION_XML_TYPE));
   }
 
   private String toXML(DocAndAnnotations docAndAnnotations) {
