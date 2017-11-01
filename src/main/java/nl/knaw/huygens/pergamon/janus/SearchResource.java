@@ -19,7 +19,6 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -38,12 +37,10 @@ public class SearchResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
-  private final Client client;
-  private final String topModUri;
+  private final WebTarget modeler;
 
-  SearchResource(Client topModClient, String topModUri) {
-    this.client = topModClient;
-    this.topModUri = topModUri;
+  SearchResource(WebTarget modeler) {
+    this.modeler = modeler;
   }
 
   @POST
@@ -52,7 +49,7 @@ public class SearchResource {
   public Response suggest(SuggestParams params) {
     LOG.debug("params: {}", params);
 
-    final WebTarget target = client.target(topModUri).path("suggest");
+    final WebTarget target = modeler.path("suggest");
 
     final Entity<SuggestParams> entity = Entity.entity(params, MediaType.APPLICATION_JSON_TYPE);
 
@@ -79,7 +76,7 @@ public class SearchResource {
   }
 
   private WebTarget modelUploadTarget() {
-    return client.target(topModUri).path(MODEL_UPLOAD_PATH).register(MultiPartFeature.class);
+    return modeler.path(MODEL_UPLOAD_PATH).register(MultiPartFeature.class);
   }
 
   static class SuggestParams {

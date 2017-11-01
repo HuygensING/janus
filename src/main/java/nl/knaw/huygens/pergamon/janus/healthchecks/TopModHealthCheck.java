@@ -2,7 +2,6 @@ package nl.knaw.huygens.pergamon.janus.healthchecks;
 
 import com.codahale.metrics.health.HealthCheck;
 
-import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -12,8 +11,8 @@ public class TopModHealthCheck extends HealthCheck {
 
   private final WebTarget target;
 
-  public TopModHealthCheck(Client client, String baseUri) {
-    this.target = client.target(baseUri).path(ABOUT_PATH);
+  public TopModHealthCheck(WebTarget modeler) {
+    this.target = modeler.path(ABOUT_PATH);
   }
 
   @Override

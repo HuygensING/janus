@@ -145,10 +145,10 @@ public class Server extends Application<Server.Config> {
 
     final Client jerseyClient = createTopModClient(config, environment);
     environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(config.topModUri)));
-    environment.jersey().register(new SearchResource(jerseyClient, config.topModUri));
+    environment.jersey().register(new SearchResource(jerseyClient.target(config.topModUri)));
     environment.jersey().register(
       new AboutResource(getName(), buildProperties, jerseyClient, config, backend));
-    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient, config.topModUri));
+    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient.target(config.topModUri)));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
