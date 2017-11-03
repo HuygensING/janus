@@ -25,8 +25,13 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.script.Script;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 
 import javax.annotation.Nullable;
@@ -39,6 +44,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -268,7 +274,7 @@ public class ElasticBackend implements AutoCloseable {
       if (noSuchIndex(e)) {
         return Optional.empty();
       }
-      throw  e;
+      throw e;
     }
   }
 
@@ -623,6 +629,41 @@ public class ElasticBackend implements AutoCloseable {
       r = e.getResponse();
     }
     return r;
+  }
+
+  static final String SEPARATOR = "_%%_"; // Unlikely to occur in a placename.
+  static final Script PLACE_PAIRS = new Script(
+    "  def s = doc['senderloc'].value;" +
+      "def r = doc['recipientloc'].value;" +
+      "if (s.compareTo(r) < 0) { s + '" + SEPARATOR + "' + r } else { r + '" + SEPARATOR + "' + s }"
+  );
+
+  @Deprecated
+  public List<Map<String, Object>> placeGraph(String filter) throws IOException {
+    SearchRequest request = new SearchRequest(documentIndex)
+      .source(
+        new SearchSourceBuilder()
+          .query(QueryBuilders.boolQuery().filter(wrapperQuery(filter)))
+          .size(0)
+          .aggregation(AggregationBuilders.terms("pairs")
+                                          .script(PLACE_PAIRS)
+                                          .size(10000))
+      );
+
+    Terms pairs = (Terms) hiClient.search(request).getAggregations().asMap().get("pairs");
+    return pairs.getBuckets().stream()
+                .map(bucket -> {
+                  String places = (String) bucket.getKey();
+                  int sep = places.indexOf(SEPARATOR);
+                  String src = places.substring(0, sep);
+                  String tgt = places.substring(sep + SEPARATOR.length(), places.length());
+                  Map<String, Object> r = new HashMap<>();
+                  r.put("weight", bucket.getDocCount());
+                  r.put("source", src);
+                  r.put("target", tgt);
+                  return r;
+                })
+                .collect(Collectors.toList());
   }
 
   private PutResult errorResult(Throwable e) {
