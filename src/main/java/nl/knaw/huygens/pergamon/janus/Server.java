@@ -14,6 +14,7 @@ import io.swagger.annotations.Contact;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
+import nl.knaw.huygens.pergamon.janus.docsets.InMemoryDocSetStore;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
 import nl.knaw.huygens.pergamon.janus.healthchecks.TextModHealthCheck;
 import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
@@ -137,6 +138,7 @@ public class Server extends Application<Server.Config> {
     MDC.put("commit_hash", commitHash); // for 'main' Thread
     environment.jersey().register(new RequestLoggingFilter(commitHash));
 
+    environment.jersey().register(new DocSetsResource(new InMemoryDocSetStore()));
     environment.jersey().register(new SandboxResource());
 
     final ElasticBackend backend = createBackend(config);
