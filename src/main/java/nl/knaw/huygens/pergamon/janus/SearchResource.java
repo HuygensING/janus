@@ -71,7 +71,7 @@ public class SearchResource {
   private Entity<MultiPart> workAroundMissingBoundaryInContentTypeHeader(MultiPart multiPart) {
     // If boundary is not explicitly added here, DW fails to set the boundary on the
     // "Content-Type" header (although it *does* set it on the subsequent form parts),
-    // sending out a bad HTTP request, which topmod then chokes on.
+    // sending out a bad HTTP request, which textmod then chokes on.
 
     // should just be: return Entity.entity(multiPart, multiPart.getMediaType());
     return Entity.entity(multiPart, Boundary.addBoundary(multiPart.getMediaType()));

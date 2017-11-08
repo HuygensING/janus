@@ -7,7 +7,7 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-      topmod:
+      textmod:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -25,8 +25,8 @@ services:
     expose:
       - "9200"
 
-  topmod:
-    image: huygensing/topmod
+  textmod:
+    image: huygensing/textmod
     healthcheck:
       test: ["CMD", "curl", "-fI", "http://localhost:8080/about"]
       interval: 10s

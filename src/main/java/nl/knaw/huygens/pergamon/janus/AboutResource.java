@@ -87,7 +87,7 @@ public class AboutResource {
     final Map<String, Dependency> dependencies = new TreeMap<>();
 
     dependencies.put("elasticsearch", elasticsearch::about);
-    dependencies.put("topmod", new SimpleDependency(config.topModUri));
+    dependencies.put("textmod", new SimpleDependency(config.textModUri));
 
     dependencies.forEach((name, dependency) -> {
       final ObjectNode node = mapper.createObjectNode();

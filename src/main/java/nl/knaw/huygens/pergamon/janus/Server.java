@@ -15,7 +15,7 @@ import io.swagger.annotations.Info;
 import io.swagger.annotations.License;
 import io.swagger.annotations.SwaggerDefinition;
 import nl.knaw.huygens.pergamon.janus.graphql.GraphQLResource;
-import nl.knaw.huygens.pergamon.janus.healthchecks.TopModHealthCheck;
+import nl.knaw.huygens.pergamon.janus.healthchecks.TextModHealthCheck;
 import nl.knaw.huygens.pergamon.janus.logging.RequestLoggingFilter;
 import org.glassfish.jersey.logging.LoggingFeature;
 import org.hibernate.validator.constraints.NotEmpty;
@@ -77,7 +77,7 @@ public class Server extends Application<Server.Config> {
 
     @JsonProperty
     @NotEmpty
-    String topModUri;
+    String textModUri;
   }
 
   static class ESConfig {
@@ -144,12 +144,12 @@ public class Server extends Application<Server.Config> {
     environment.jersey().register(new GraphQLResource(backend));
     environment.jersey().register(new PlaceGraphResource(backend));
 
-    final Client jerseyClient = createTopModClient(config, environment);
-    environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(config.topModUri)));
-    environment.jersey().register(new SearchResource(jerseyClient.target(config.topModUri)));
+    final Client jerseyClient = createModelingClient(config, environment);
+    environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(config.textModUri)));
+    environment.jersey().register(new SearchResource(jerseyClient.target(config.textModUri)));
     environment.jersey().register(
       new AboutResource(getName(), buildProperties, jerseyClient, config, backend));
-    environment.healthChecks().register("topmod", new TopModHealthCheck(jerseyClient.target(config.topModUri)));
+    environment.healthChecks().register("textmod", new TextModHealthCheck(jerseyClient.target(config.textModUri)));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
@@ -157,7 +157,7 @@ public class Server extends Application<Server.Config> {
     backend.registerHealthChecks(environment.healthChecks());
   }
 
-  private Client createTopModClient(Config config, Environment environment) {
+  private Client createModelingClient(Config config, Environment environment) {
     return new JerseyClientBuilder(environment).using(config.jerseyClient).build(getName());
   }
 
