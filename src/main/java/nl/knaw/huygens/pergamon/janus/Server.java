@@ -79,7 +79,16 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     String textModUri;
+
+    @JsonProperty
+    @NotNull
+    private Storage storage;
   }
+
+  // static class Schema {
+  //   @JsonProperty
+  //   private List<String> fielddefs;
+  // }
 
   static class ESConfig {
     @JsonProperty
@@ -92,6 +101,10 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private String documentType;
+
+    @JsonProperty
+    @NotEmpty
+    private List<Mapping.Field> fields;
   }
 
   static class ServiceConfig {
@@ -108,6 +121,12 @@ public class Server extends Application<Server.Config> {
     String getUri() {
       return uri;
     }
+  }
+
+  static class Storage {
+    @JsonProperty
+    @NotEmpty
+    private String directory;
   }
 
   public static void main(String[] args) throws Exception {
@@ -191,7 +210,11 @@ public class Server extends Application<Server.Config> {
   }
 
   private ElasticBackend createBackend(Config config) throws IOException {
-    final ElasticBackend backend = new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType);
+    Mapping mapping = new Mapping(config.es.fields, false);
+
+    final ElasticBackend backend =
+      new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType, mapping,
+        config.storage.directory);
     backend.initIndices();
     return backend;
   }

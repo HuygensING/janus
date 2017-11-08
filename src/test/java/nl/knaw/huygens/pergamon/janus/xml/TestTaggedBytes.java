@@ -1,10 +1,10 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
-import nu.xom.Document;
+import nu.xom.Element;
 
 public class TestTaggedBytes extends TestTaggedText {
   @Override
-  protected TaggedText construct(Document doc) {
+  protected TaggedText construct(Element doc) {
     return new TaggedBytes(doc);
   }
 

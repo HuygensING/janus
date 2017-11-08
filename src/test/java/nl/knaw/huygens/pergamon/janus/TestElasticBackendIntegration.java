@@ -31,7 +31,8 @@ public class TestElasticBackendIntegration {
   @BeforeClass
   public static void connect() throws IOException {
     try {
-      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE);
+      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE,
+        new Mapping(Collections.singletonList(new Mapping.Field("body", "text", "/*")), true), null);
       backend.initIndices();
     } catch (ConnectException e) {
       available = false;
@@ -56,7 +57,7 @@ public class TestElasticBackendIntegration {
   @Test
   public void noIndexYet() throws IOException {
     ElasticBackend newBackend = new ElasticBackend(Collections.emptyList(),
-      "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE);
+      "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE, null, null);
 
     // These shouldn't raise IndexNotFoundException.
     assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));

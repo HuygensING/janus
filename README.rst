@@ -33,7 +33,7 @@ You can now upload an XML file to Janus to have it indexed as a document
 with one annotation per XML element::
 
     curl -X PUT -H "Content-Type: application/xml"  \
-        http://localhost:8080/documents/some_id -d @example.xml
+        http://localhost:8080/documents/some_id --data-binary @example.xml
     curl http://localhost:8080/documents/some_id
 
 Add an annotation::
@@ -154,7 +154,7 @@ To upload XML files in bulk for indexing, use something like::
     find some_dir -name '*.xml' -print0 |
         xargs -0 -n 1 -P "$(nproc)" sh -c '
             curl -s -X PUT -H "Content-Type: application/xml"  \
-                http://localhost:8080/documents/$(uuidgen) -d @$0
+                http://localhost:8080/documents/$(uuidgen) --data-binary @$0
             echo " " $0
         '
 

@@ -172,13 +172,14 @@ public class DocumentsResource {
   }
 
   @GET
-  @Path("{id}/xml")
-  @Produces(MediaType.APPLICATION_XML)
-  @ApiOperation(value = "Reconstruct XML representation of a document",
-    notes = "Only works for documents that were originally uploaded as XML and " +
-      "only annotations deriving from tags are included.")
-  public Response getXml(@PathParam("id") String id) throws IOException {
-    return ElasticBackend.asResponse(backend.getXml(id));
+  @Path("{id}/orig")
+  @ApiOperation(value = "Reproduce document as it was uploaded")
+  public Response getXml(@PathParam("id") @NotEmpty String id) throws IOException {
+    try {
+      return Response.ok().entity(backend.getOrig(id)).build();
+    } catch (Throwable e) {
+      return Response.serverError().entity(e.getMessage()).build();
+    }
   }
 
   @POST
@@ -193,5 +194,4 @@ public class DocumentsResource {
   public Response putXml(@PathParam("id") String id, String content) throws IOException {
     return backend.putXml(id, content).asResponse();
   }
-
 }

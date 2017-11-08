@@ -38,6 +38,12 @@ public class Identifier {
     }
   }
 
+  public static void requireValid(String id) {
+    if (!valid(id)) {
+      throw new IllegalArgumentException("invalid identifier " + id);
+    }
+  }
+
   /**
    * Determine whether id is a valid identifier.
    * <p>
