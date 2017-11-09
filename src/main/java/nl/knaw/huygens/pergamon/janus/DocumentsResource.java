@@ -8,6 +8,7 @@ import io.swagger.annotations.ApiResponses;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Text;
+import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -105,6 +106,22 @@ public class DocumentsResource {
                                  @QueryParam("q") String query) {
     // TODO distinguish between id not found (404) and no annotations for id (empty list)
     return ElasticBackend.asResponse(backend.getAnnotations(id, query, recursive));
+  }
+
+  @POST
+  @Path("graph")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @ApiOperation(value = "Get co-occurrence graph from document fields",
+    notes = "Argument must be an Elasticsearch filter expression")
+  public Response cooccurrence(Object filter,
+                               @QueryParam("field1") @NotEmpty String field1,
+                               @QueryParam("field2") @NotEmpty String field2) throws IOException {
+    try {
+      return Response.status(200).entity(backend.cooccurrence(filter, field1, field2)).build();
+    } catch (Throwable e) {
+      return Response.status(500).entity(e.getMessage()).build();
+    }
   }
 
   @POST

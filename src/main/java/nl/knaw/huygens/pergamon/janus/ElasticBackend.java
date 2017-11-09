@@ -3,6 +3,8 @@ package nl.knaw.huygens.pergamon.janus;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
@@ -50,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.EMPTY_MAP;
@@ -631,22 +634,40 @@ public class ElasticBackend implements AutoCloseable {
     return r;
   }
 
-  static final String SEPARATOR = "_%%_"; // Unlikely to occur in a placename.
-  static final Script PLACE_PAIRS = new Script(
-    "  def s = doc['senderloc'].value;" +
-      "def r = doc['recipientloc'].value;" +
-      "if (s.compareTo(r) < 0) { s + '" + SEPARATOR + "' + r } else { r + '" + SEPARATOR + "' + s }"
-  );
+  // Painless script to find co-occurrences of two fields' values.
+  // Because of return type limitations, we have to return a single string
+  // to represent a pair. The SEPARATOR is chosen to be as unlikely as possible.
+  // It must not contain a %, since it will be passed through String.format.
+  static final String SEPARATOR = "$$\t\t^^__";
+  static final String PAIR_QUERY =
+    "  def s = doc['%s'].value;" +
+      "def r = doc['%s'].value;" +
+      "if (s.compareTo(r) < 0) { s + '" + SEPARATOR + "' + r } else { r + '" + SEPARATOR + "' + s }";
 
-  @Deprecated
-  public List<Map<String, Object>> placeGraph(String filter) throws IOException {
+  /**
+   * Co-occurrence graph of two field in documents that pass a filter.
+   *
+   * @param filter
+   * @return
+   * @throws IOException
+   */
+  public List<Map<String, Object>> cooccurrence(Object filter, String field1, String field2) throws IOException {
+    // Validate fields to prevent nasty queries from passing through
+    validateFieldName(field1);
+    validateFieldName(field2);
+
+    // XXX this is wasteful, but we need to pass the filter query as a string to the ES client.
+    // Can the Resource method require JSON without parsing it?
+    ObjectMapper mapper = Jackson.newObjectMapper();
+    String filterExpr = mapper.writeValueAsString(filter);
+
     SearchRequest request = new SearchRequest(documentIndex)
       .source(
         new SearchSourceBuilder()
-          .query(QueryBuilders.boolQuery().filter(wrapperQuery(filter)))
+          .query(QueryBuilders.boolQuery().filter(wrapperQuery(filterExpr)))
           .size(0)
           .aggregation(AggregationBuilders.terms("pairs")
-                                          .script(PLACE_PAIRS)
+                                          .script(new Script(String.format(PAIR_QUERY, field1, field2)))
                                           .size(10000))
       );
 
@@ -664,6 +685,12 @@ public class ElasticBackend implements AutoCloseable {
                   return r;
                 })
                 .collect(Collectors.toList());
+  }
+
+  private static void validateFieldName(String field) {
+    if (!Pattern.matches("[a-z0-9_-]+", field)) {
+      throw new RuntimeException("invalid field name '" + field + "'");
+    }
   }
 
   private PutResult errorResult(Throwable e) {

@@ -142,7 +142,6 @@ public class Server extends Application<Server.Config> {
     final ElasticBackend backend = createBackend(config);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
-    environment.jersey().register(new PlaceGraphResource(backend));
 
     final Client jerseyClient = createTopModClient(config, environment);
     environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(config.topModUri)));
