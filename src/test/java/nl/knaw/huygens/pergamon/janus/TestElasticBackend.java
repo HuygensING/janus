@@ -18,7 +18,7 @@ public class TestElasticBackend {
 
     addr = ElasticBackend.parseAddr("localhost");
     assertHostEquals("localhost", addr);
-    assertEquals(9300, addr.getPort());
+    assertEquals(9200, addr.getPort());
 
     // IPv6
     addr = ElasticBackend.parseAddr("[::1]:9300");
@@ -27,7 +27,7 @@ public class TestElasticBackend {
 
     addr = ElasticBackend.parseAddr("[::1]");
     assertHostEquals("[::1]", addr);
-    assertEquals(9300, addr.getPort());
+    assertEquals(9200, addr.getPort());
   }
 
   private void assertHostEquals(String expected, HttpHost addr) {
