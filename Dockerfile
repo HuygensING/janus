@@ -4,6 +4,7 @@ WORKDIR /build
 
 COPY pom.xml pom.xml
 COPY src/main src/main
+COPY src/test src/test
 COPY scripts/collect-build-info.sh collect-build-info.sh
 
 WORKDIR /
