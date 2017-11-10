@@ -186,7 +186,7 @@ public class ElasticBackend implements AutoCloseable {
 
   // Parse address spec of the form <addr>[:<port>]
   static HttpHost parseAddr(String addr) {
-    int port = 9300;
+    int port = 9200;
 
     int colon = addr.lastIndexOf(':');
     if (colon >= 0) {
