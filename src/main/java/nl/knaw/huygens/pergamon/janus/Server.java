@@ -138,19 +138,21 @@ public class Server extends Application<Server.Config> {
     MDC.put("commit_hash", commitHash); // for 'main' Thread
     environment.jersey().register(new RequestLoggingFilter(commitHash));
 
-    environment.jersey().register(new DocSetsResource(new InMemoryDocSetStore()));
     environment.jersey().register(new SandboxResource());
 
     final ElasticBackend backend = createBackend(config);
     environment.jersey().register(new AnnotationsResource(backend));
     environment.jersey().register(new GraphQLResource(backend));
 
+    final String textModUri = config.textModUri;
     final Client jerseyClient = createModelingClient(config, environment);
-    environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(config.textModUri)));
-    environment.jersey().register(new SearchResource(jerseyClient.target(config.textModUri)));
+    environment.jersey().register(new DocSetsResource(backend, new InMemoryDocSetStore(),
+      jerseyClient.target(textModUri)));
+    environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(textModUri)));
+    environment.jersey().register(new SearchResource(jerseyClient.target(textModUri)));
     environment.jersey().register(
       new AboutResource(getName(), buildProperties, jerseyClient, config, backend));
-    environment.healthChecks().register("textmod", new TextModHealthCheck(jerseyClient.target(config.textModUri)));
+    environment.healthChecks().register("textmod", new TextModHealthCheck(jerseyClient.target(textModUri)));
 
     environment.jersey().register(new LoggingFeature(java.util.logging.Logger.getLogger(getClass().getName()),
       Level.FINE, LoggingFeature.Verbosity.PAYLOAD_ANY, 1024));
