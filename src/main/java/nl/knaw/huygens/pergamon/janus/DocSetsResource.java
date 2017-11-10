@@ -87,7 +87,7 @@ public class DocSetsResource {
   }
 
   private Response calcCoCitations(Set<XmlDocument> docs) {
-    final Entity<XmlDocuments> entity = Entity.entity(new XmlDocuments(docs), MediaType.APPLICATION_JSON_TYPE);
+    final Entity<Set<XmlDocument>> entity = Entity.entity(docs, MediaType.APPLICATION_JSON_TYPE);
 
     LOG.debug("Posting entity to /cocit: {}", entity);
 
@@ -130,23 +130,4 @@ public class DocSetsResource {
     }
   }
 
-  static class XmlDocuments {
-    @JsonProperty
-    final String id;
-    @JsonProperty
-    final Set<XmlDocument> documents;
-
-    private XmlDocuments(Set<XmlDocument> documents) {
-      this.id = UUID.randomUUID().toString();
-      this.documents = documents;
-    }
-
-    @Override
-    public String toString() {
-      return MoreObjects.toStringHelper(XmlDocuments.class)
-                        .add("id", id)
-                        .add("documents", documents)
-                        .toString();
-    }
-  }
 }
