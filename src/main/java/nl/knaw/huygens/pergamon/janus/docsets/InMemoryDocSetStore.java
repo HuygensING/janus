@@ -3,6 +3,7 @@ package nl.knaw.huygens.pergamon.janus.docsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +14,11 @@ public class InMemoryDocSetStore implements DocSetStore {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryDocSetStore.class);
 
   private final Map<UUID, DocSet> memoryStore = new HashMap<>();
+
+  @Override
+  public Collection<DocSet> findAll() {
+    return memoryStore.values();
+  }
 
   @Override
   public DocSet createDocSet(Set<String> documentIds) {

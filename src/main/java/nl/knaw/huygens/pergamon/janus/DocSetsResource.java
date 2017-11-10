@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -47,6 +48,11 @@ public class DocSetsResource {
     this.documentStore = documentStore;
     this.docSetStore = docSetStore;
     this.coCiTarget = coCiTarget;
+  }
+
+  @GET
+  public Collection<DocSet> getDocSets() {
+    return docSetStore.findAll();
   }
 
   @GET
