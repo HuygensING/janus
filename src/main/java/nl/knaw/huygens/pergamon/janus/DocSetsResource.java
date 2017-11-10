@@ -75,7 +75,7 @@ public class DocSetsResource {
   }
 
   @GET
-  @Path("{id}/co-citations")
+  @Path("{id}/cocitations")
   public Response getCoCitations(@PathParam("id") UUID docSetId) {
     Set<XmlDocument> docs = docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId)).getDocIds()
                                        .parallelStream()
