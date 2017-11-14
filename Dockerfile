@@ -33,7 +33,6 @@ RUN cd /build \
  && cd / \
  && rm -rf /build
 
-COPY config-docker-compose.yml .
 COPY config-template.yml config.yml
 
 EXPOSE 8080 8081
