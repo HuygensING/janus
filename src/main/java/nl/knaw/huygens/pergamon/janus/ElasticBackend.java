@@ -247,13 +247,24 @@ public class ElasticBackend implements AutoCloseable {
     }
   }
 
-  void initIndices() throws IOException {
+  public void initIndices() throws IOException {
     if (!indexExists(annotationIndex)) {
       loClient.performRequest("PUT", annotationIndex, Collections.emptyMap(),
         new InputStreamEntity(ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON)));
     }
     if (!indexExists(documentIndex)) {
-      org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex);
+      Map<String, Object> innerMap = new HashMap<>();
+      innerMap.put(documentType, mapping.asMap());
+      Map<String, Object> outerMap = new HashMap<>();
+      outerMap.put("mappings", innerMap);
+
+      ObjectMapper mapper = Jackson.newObjectMapper();
+      org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex,
+        Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(outerMap)));
+      int code = r.getStatusLine().getStatusCode();
+      if (code < 200 || code >= 300) {
+        throw new RuntimeException(String.format("creating document index: %d", code));
+      }
     }
   }
 

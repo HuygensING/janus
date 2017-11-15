@@ -85,11 +85,6 @@ public class Server extends Application<Server.Config> {
     private Storage storage;
   }
 
-  // static class Schema {
-  //   @JsonProperty
-  //   private List<String> fielddefs;
-  // }
-
   static class ESConfig {
     @JsonProperty
     private List<String> hosts;
