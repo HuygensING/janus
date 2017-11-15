@@ -174,9 +174,9 @@ public class DocumentsResource {
   @GET
   @Path("{id}/orig")
   @ApiOperation(value = "Reproduce document as it was uploaded")
-  public Response getXml(@PathParam("id") @NotEmpty String id) throws IOException {
+  public Response getOriginal(@PathParam("id") @NotEmpty String id) throws IOException {
     try {
-      return Response.ok().entity(backend.getOrig(id)).build();
+      return Response.ok().entity(backend.getOriginal(id)).build();
     } catch (Throwable e) {
       return Response.serverError().entity(e.getMessage()).build();
     }

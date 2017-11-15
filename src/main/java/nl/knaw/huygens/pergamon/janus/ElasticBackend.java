@@ -622,7 +622,7 @@ public class ElasticBackend implements AutoCloseable {
     }
   }
 
-  public InputStream getOrig(String id) throws IOException {
+  public InputStream getOriginal(String id) throws IOException {
     Path path = Paths.get(fileStorageDir, id);
     return new FileInputStream(path.toFile());
   }
