@@ -1,7 +1,7 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.google.common.base.Utf8;
-import nu.xom.Document;
+import nu.xom.Element;
 
 /**
  * Converts XML to text-with-annotations. Uses byte offsets.
@@ -9,7 +9,7 @@ import nu.xom.Document;
 public class TaggedBytes extends TaggedText {
   private int offset = 0;
 
-  public TaggedBytes(Document doc) {
+  public TaggedBytes(Element doc) {
     super(doc);
   }
 

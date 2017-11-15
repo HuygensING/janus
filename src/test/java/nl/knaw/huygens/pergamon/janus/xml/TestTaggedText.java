@@ -1,6 +1,6 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
-import nu.xom.Document;
+import nu.xom.Element;
 import org.junit.Test;
 
 import java.util.List;
@@ -30,13 +30,13 @@ public abstract class TestTaggedText {
 
   TaggedText parse(String xml) {
     try {
-      return construct(XmlParser.fromString(xml));
+      return construct(XmlParser.fromString(xml).getRootElement());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  protected abstract TaggedText construct(Document doc);
+  protected abstract TaggedText construct(Element doc);
 
   // Constructs a Tag annotation. Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.
   // Tags may be reused as identifiers.

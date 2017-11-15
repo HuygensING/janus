@@ -8,7 +8,9 @@ import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
-import nu.xom.ParsingException;
+import nu.xom.Document;
+import nu.xom.Element;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.http.HttpHost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
@@ -16,7 +18,6 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
@@ -25,6 +26,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -39,10 +41,15 @@ import org.elasticsearch.search.sort.SortOrder;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,12 +62,14 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.util.Collections.EMPTY_MAP;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
+import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 import static org.apache.commons.text.StringEscapeUtils.escapeJava;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.elasticsearch.client.Requests.bulkRequest;
@@ -141,10 +150,14 @@ public class ElasticBackend implements AutoCloseable {
   // Type name of annotations in the ES index.
   private final String annotationType;
 
+  private final Mapping mapping;
+
   private final RestHighLevelClient hiClient;
   private final RestClient loClient;
   final String documentIndex;
   final String documentType;
+
+  private final String fileStorageDir;
 
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.
@@ -155,13 +168,16 @@ public class ElasticBackend implements AutoCloseable {
    * @param documentType  Name of the document type.
    * @throws UnknownHostException
    */
-  public ElasticBackend(List<String> hosts, String documentIndex, String documentType) throws UnknownHostException {
-    this(hosts, documentIndex, documentType, ANNOTATION_INDEX, ANNOTATION_TYPE);
+  public ElasticBackend(List<String> hosts, String documentIndex, String documentType, Mapping mapping,
+                        String storageDir)
+    throws UnknownHostException {
+    this(hosts, documentIndex, documentType, ANNOTATION_INDEX, ANNOTATION_TYPE, mapping, storageDir);
   }
 
   // Final two arguments are for test purposes only.
   ElasticBackend(List<String> hosts, String documentIndex, String documentType,
-                 String annotationIndex, String annotationType) throws UnknownHostException {
+                 String annotationIndex, String annotationType, Mapping mapping, String storageDir)
+    throws UnknownHostException {
     if (Objects.equals(documentIndex, annotationIndex) || Objects.equals(annotationType, documentType)) {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
     }
@@ -174,6 +190,8 @@ public class ElasticBackend implements AutoCloseable {
     this.annotationType = annotationType;
     this.documentIndex = documentIndex;
     this.documentType = documentType;
+    this.mapping = mapping;
+    this.fileStorageDir = storageDir;
 
     loClient = RestClient.builder(hosts.stream()
                                        .map(ElasticBackend::parseAddr)
@@ -479,6 +497,8 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public PutResult putJSON(String id, String content) throws IOException {
+    store(id, content);
+
     // TODO parse and check if content has body field?
     try {
       IndexResponse response =
@@ -499,6 +519,7 @@ public class ElasticBackend implements AutoCloseable {
         // ActionRequestValidationException: an id must be provided if version type or value are set
         id = UUID.randomUUID().toString();
       }
+      store(id, content);
       IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
                                                     .source(jsonBuilder().startObject()
                                                                          .field("body", content)
@@ -513,27 +534,46 @@ public class ElasticBackend implements AutoCloseable {
    * Store XML document's text with one annotation per XML element.
    */
   public PutResult putXml(String id, String document) throws IOException {
+    if (id == null) {
+      id = UUID.randomUUID().toString();
+    }
+    store(id, document);
     try {
-      return putXml(new TaggedCodepoints(XmlParser.fromString(document), id));
-    } catch (ParsingException e) {
+      Document xml = XmlParser.fromString(document);
+      Triple<String, Element, Map<String, String>> fields = mapping.apply(xml);
+
+      // first field is the special "body" field
+      TaggedCodepoints body = new TaggedCodepoints(fields.getMiddle(), id);
+
+      return putXml(fields.getLeft(), body, fields.getRight());
+    } catch (Throwable e) {
       return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
 
-  private PutResult putXml(TaggedCodepoints document) throws IOException {
+  private PutResult putXml(String bodyField, TaggedCodepoints body, Map<String, String> fields) throws IOException {
     // TODO: handle partial failures better.
-    String docId = document.docId;
+    String docId = body.docId;
+
+    XContentBuilder doc = jsonBuilder().startObject()
+                                       .field(bodyField, body.text());
+    doc.field(bodyField, body.text());
+    for (Map.Entry<String, String> entry : fields.entrySet()) {
+      doc.field(entry.getKey(), entry.getValue());
+    }
+    doc.endObject();
+
     IndexResponse response = hiClient.index(indexRequest(documentIndex)
       .type(documentType).id(docId).create(true)
       .source(jsonBuilder().startObject()
-                           .field("body", document.text())
+                           .field(bodyField, body.text())
                            .endObject()));
     int status = response.status().getStatus();
     if (status < 200 || status >= 300) {
       return new PutResult(null, status);
     }
 
-    List<Tag> tags = document.tags();
+    List<Tag> tags = body.tags();
     BulkRequest bulk = bulkRequest();
     for (int i = 0; i < tags.size(); i++) {
       Tag ann = tags.get(i);
@@ -568,23 +608,42 @@ public class ElasticBackend implements AutoCloseable {
     return new PutResult(docId, 201);
   }
 
+  private void store(String id, String content) throws IOException {
+    if (fileStorageDir == null) {
+      return;
+    }
+    requireValid(id);
+    Path path = Paths.get(fileStorageDir, id);
+    try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
+      out.write(content);
+    } catch (Throwable e) {
+      Files.delete(path);
+      throw e;
+    }
+  }
+
+  public InputStream getOrig(String id) throws IOException {
+    Path path = Paths.get(fileStorageDir, id);
+    return new FileInputStream(path.toFile());
+  }
+
   /**
    * Produce reconstruction of XML document.
    */
-  public String getXml(String id) throws IOException {
-    GetResponse response = hiClient.get(new GetRequest(documentIndex, documentType, id));
-    if (!response.isExists()) {
-      return null;
-    }
-    String text = (String) response.getSourceAsMap().get("body");
-    List<Tag> tags = getTags(id);
-    if (tags.isEmpty()) {
-      // TODO turn this into a response with the right status code (bad request?)
-      throw new IllegalArgumentException("not originally an XML document");
-    }
-
-    return new TaggedCodepoints(text, id, tags).reconstruct().toXML();
-  }
+  // public String getXml(String id) throws IOException {
+  //   GetResponse response = hiClient.get(new GetRequest(documentIndex, documentType, id));
+  //   if (!response.isExists()) {
+  //     return null;
+  //   }
+  //   String text = (String) response.getSourceAsMap().get("body");
+  //   List<Tag> tags = getTags(id);
+  //   if (tags.isEmpty()) {
+  //     // TODO turn this into a response with the right status code (bad request?)
+  //     throw new IllegalArgumentException("not originally an XML document");
+  //   }
+  //
+  //   return new TaggedCodepoints(text, id, tags).reconstruct().toXML();
+  // }
 
   private static final String[] TAG_FIELDS =
     new String[]{"attrib", "start", "end", "type", "target", "xmlParent"};

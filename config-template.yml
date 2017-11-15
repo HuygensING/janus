@@ -8,6 +8,28 @@ elasticsearch:
   documentIndex: docs
   documentType: document
 
+  # Field definitions. Fields have name, type and xpath properties.
+  # XML documents are parsed using the given XPath queries to produce values
+  # for the named fields. The types are Elasticsearch index types.
+  #
+  # The first field is special and usually refers to a document body.
+  # Tag (annotation) offsets are calculated relative to this field.
+  #
+  # The XPath queries must resolve to nodes or attributes.
+  fields:
+    - name: "body"
+      type: "text"
+      xpath: "/doc/body"
+    - name: "title"
+      type: "text"
+      xpath: "/doc/title"
+    - name: "author"
+      type: "keyword"
+      xpath: "/doc/@author"
+    #- name: "pub_date"
+    #  type: "date"
+    #  xpath: "/doc/@date"
+
 jerseyClient:
   timeout: 5s
 
@@ -24,6 +46,11 @@ logging:
 server:
   requestLog:
     appenders: [] # All requests are logged through logging.RequestLoggingFilter
+
+storage:
+  # Storage location of uploaded files.
+  directory:
+    original_docs
 
 swagger:
   resourcePackage: nl.knaw.huygens.pergamon.janus

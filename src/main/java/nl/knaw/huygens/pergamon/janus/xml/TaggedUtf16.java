@@ -1,6 +1,6 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
-import nu.xom.Document;
+import nu.xom.Element;
 
 /**
  * Converts XML to text-with-annotations. Uses UTF-16 offsets.
@@ -9,7 +9,7 @@ import nu.xom.Document;
  * offsets.
  */
 public class TaggedUtf16 extends TaggedText {
-  public TaggedUtf16(Document doc) {
+  public TaggedUtf16(Element doc) {
     super(doc);
   }
 

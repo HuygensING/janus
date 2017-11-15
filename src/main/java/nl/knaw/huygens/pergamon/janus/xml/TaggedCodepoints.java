@@ -1,14 +1,12 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
 import nu.xom.Attribute;
-import nu.xom.Document;
 import nu.xom.Element;
 
 import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.groupingBy;
 
 /**
  * Converts XML to text-with-annotations. Uses UTF-16 offsets.
@@ -16,11 +14,11 @@ import static java.util.stream.Collectors.groupingBy;
 public class TaggedCodepoints extends TaggedText {
   private int offset = 0;
 
-  public TaggedCodepoints(Document doc) {
+  public TaggedCodepoints(Element doc) {
     super(doc);
   }
 
-  public TaggedCodepoints(Document doc, String id) {
+  public TaggedCodepoints(Element doc, String id) {
     super(doc, id);
   }
 
@@ -51,10 +49,10 @@ public class TaggedCodepoints extends TaggedText {
   /**
    * Reconstruct XML document from text and list of tags.
    */
-  public Document reconstruct() {
-    Element root = new Reconstruction(tags.stream().collect(groupingBy(t -> t.xmlParent))).apply(tags.get(0));
-    return new Document(root);
-  }
+  // public Document reconstruct() {
+  //   Element root = new Reconstruction(tags.stream().collect(groupingBy(t -> t.xmlParent))).apply(tags.get(0));
+  //   return new Document(root);
+  // }
 
   private class Reconstruction {
     private Map<String, List<Tag>> children;

@@ -7,7 +7,7 @@ import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedText;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedUtf16;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
-import nu.xom.Document;
+import nu.xom.Element;
 import nu.xom.ParsingException;
 
 import javax.ws.rs.Consumes;
@@ -17,6 +17,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
+
 import java.io.IOException;
 import java.util.function.Function;
 
@@ -28,7 +29,7 @@ public class SandboxResource {
     UTF16(TaggedUtf16::new),
     CODEPOINT(TaggedCodepoints::new);
 
-    private final Function<Document, TaggedText> transformer;
+    private final Function<Element, TaggedText> transformer;
 
     public static OffsetType fromString(String type) {
       return OffsetType.valueOf(type.toUpperCase());
@@ -39,11 +40,11 @@ public class SandboxResource {
       return super.toString().toLowerCase();
     }
 
-    OffsetType(Function<Document, TaggedText> transformer) {
+    OffsetType(Function<Element, TaggedText> transformer) {
       this.transformer = transformer;
     }
 
-    TaggedText transform(Document document) {
+    TaggedText transform(Element document) {
       return transformer.apply(document);
     }
   }
@@ -60,6 +61,6 @@ public class SandboxResource {
   public TaggedText transformXml(String input, @QueryParam("offsets") @DefaultValue("byte") OffsetType offsetType)
     throws ParsingException, IOException {
 
-    return offsetType.transform(XmlParser.fromString(input));
+    return offsetType.transform(XmlParser.fromString(input).getRootElement());
   }
 }
