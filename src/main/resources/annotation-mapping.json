@@ -16,8 +16,7 @@
         "end": {"type": "integer"},
         "order": {"type": "integer"},
         "source": {"type": "keyword"},
-        "type": {"type": "keyword"},
-        "xmlParent": {"type": "keyword"}
+        "type": {"type": "keyword"}
       }
     }
   }

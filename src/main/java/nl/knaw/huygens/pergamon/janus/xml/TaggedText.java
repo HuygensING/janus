@@ -1,6 +1,7 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import nl.knaw.huygens.pergamon.janus.Annotation;
 import nu.xom.Attribute;
 import nu.xom.Comment;
 import nu.xom.Element;
@@ -23,7 +24,7 @@ public abstract class TaggedText {
   public final String docId;
   private final HashMap<Node, String> nodeId = new HashMap<>();
   private Map<Integer, List<Comment>> comments = new HashMap<>();
-  final List<Tag> tags;
+  final List<Annotation> tags;
   final StringBuilder sb;
 
   TaggedText(Element doc) {
@@ -41,19 +42,13 @@ public abstract class TaggedText {
     traverse(doc);
   }
 
-  TaggedText(String text, String docId, List<Tag> tags) {
-    this.docId = docId;
-    sb = new StringBuilder(text);
-    this.tags = tags;
-  }
-
   /**
    * The tags corresponding to tags etc. in the original XML.
    *
    * @return An immutable list of tags.
    */
   @JsonProperty
-  public List<Tag> tags() {
+  public List<Annotation> tags() {
     return Collections.unmodifiableList(tags);
   }
 
@@ -79,7 +74,7 @@ public abstract class TaggedText {
       range(0, node.getChildCount()).forEach(i -> traverse(node.getChild(i)));
 
       Element elem = (Element) node;
-      Tag tag = new Tag(id, elem.getQualifiedName(), base, offset(), docId, null);
+      Annotation tag = new Annotation(base, offset(), docId, elem.getQualifiedName(), null, "xml", id);
       tags.set(insert, tag);
       range(0, elem.getAttributeCount())
         .forEach(i -> {

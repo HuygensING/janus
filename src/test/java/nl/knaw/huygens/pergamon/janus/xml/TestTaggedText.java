@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus.xml;
 
+import nl.knaw.huygens.pergamon.janus.Annotation;
 import nu.xom.Element;
 import org.junit.Test;
 
@@ -8,17 +9,17 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public abstract class TestTaggedText {
-  private void test(String xml, String text, Tag... reference) {
+  private void test(String xml, String text, Annotation... reference) {
     TaggedText result = parse(xml);
 
     assertEquals(text, result.text());
 
-    List<Tag> tags = result.tags();
+    List<Annotation> tags = result.tags();
     assertEquals(reference.length, tags.size());
 
     for (int i = 0; i < reference.length; i++) {
-      Tag x = reference[i];
-      Tag y = tags.get(i);
+      Annotation x = reference[i];
+      Annotation y = tags.get(i);
 
       assertEquals(x.type, y.type);
       assertEquals(x.start, y.start);
@@ -40,12 +41,12 @@ public abstract class TestTaggedText {
 
   // Constructs a Tag annotation. Implementations choose whether to use 8-bit, 16-bit, or codepoint end and start.
   // Tags may be reused as identifiers.
-  protected abstract Tag tag(String tag, int start8, int end8, int start16, int end16, int startCP, int endCP);
+  protected abstract Annotation tag(String tag, int start8, int end8, int start16, int end16, int startCP, int endCP);
 
-  private Tag tag(String tag,
-                  int start8, int end8, int start16, int end16, int startCP, int endCP,
-                  String... attrs) {
-    Tag ann = tag(tag, start8, end8, start16, end16, startCP, endCP);
+  private Annotation tag(String tag,
+                         int start8, int end8, int start16, int end16, int startCP, int endCP,
+                         String... attrs) {
+    Annotation ann = tag(tag, start8, end8, start16, end16, startCP, endCP);
     for (int i = 0; i < attrs.length; i += 2) {
       ann.attributes.put(attrs[i], attrs[i + 1]);
     }

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.jackson.Jackson;
-import nl.knaw.huygens.pergamon.janus.xml.Tag;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
 import nu.xom.Document;
@@ -79,7 +78,6 @@ import static org.elasticsearch.client.Requests.searchRequest;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.common.xcontent.XContentType.JSON;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.existsQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.queryStringQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
@@ -582,10 +580,10 @@ public class ElasticBackend implements AutoCloseable {
       return new PutResult(null, status);
     }
 
-    List<Tag> tags = body.tags();
+    List<Annotation> tags = body.tags();
     BulkRequest bulk = bulkRequest();
     for (int i = 0; i < tags.size(); i++) {
-      Tag ann = tags.get(i);
+      Annotation ann = tags.get(i);
       bulk.add(indexRequest(annotationIndex).type(annotationType).id(ann.id)
                                             .create(true)
                                             .source(jsonBuilder()
@@ -601,7 +599,6 @@ public class ElasticBackend implements AutoCloseable {
                                               // in exactly the order they appeared in the original.
                                               // XXX do we need this?
                                               .field("order", i)
-                                              .field("xmlParent", ann.xmlParent)
                                               .endObject()
                                             ));
     }
@@ -634,35 +631,6 @@ public class ElasticBackend implements AutoCloseable {
   public InputStream getOriginal(String id) throws IOException {
     Path path = Paths.get(fileStorageDir, id);
     return new FileInputStream(path.toFile());
-  }
-
-  private static final String[] TAG_FIELDS =
-    new String[]{"attrib", "start", "end", "type", "target", "xmlParent"};
-
-  private List<Tag> getTags(String id) throws IOException {
-    BoolQueryBuilder query = boolQuery().filter(termQuery("target", id))
-                                        .filter(termQuery("source", "xml"))
-                                        .filter(existsQuery("xmlParent"));
-
-    SearchResponse response = hiClient.search(
-      new SearchRequest(annotationIndex)
-        .source(searchSource().query(query)
-                              .fetchSource(TAG_FIELDS, null)
-                              .sort("order", SortOrder.ASC)
-                              // TODO: we should scroll.
-                              .size(1000)
-        )
-        .types(annotationType));
-
-    return Arrays.stream(response.getHits().getHits()).map(hit -> {
-      Map<String, Object> map = hit.getSourceAsMap();
-
-      Tag tag = new Tag(hit.getId(), (String) map.get("type"), (int) map.get("start"), (int) map.get("end"),
-        (String) map.get("target"), (String) map.get("xmlParent"));
-      copyAttributes(map, tag);
-
-      return tag;
-    }).collect(Collectors.toList());
   }
 
   @SuppressWarnings("unchecked")
