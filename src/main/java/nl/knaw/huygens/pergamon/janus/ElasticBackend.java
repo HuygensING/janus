@@ -576,9 +576,7 @@ public class ElasticBackend implements AutoCloseable {
 
     IndexResponse response = hiClient.index(indexRequest(documentIndex)
       .type(documentType).id(docId).create(true)
-      .source(jsonBuilder().startObject()
-                           .field(bodyField, body.text())
-                           .endObject()));
+      .source(doc));
     int status = response.status().getStatus();
     if (status < 200 || status >= 300) {
       return new PutResult(null, status);
