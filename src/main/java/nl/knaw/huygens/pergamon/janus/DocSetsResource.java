@@ -24,6 +24,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Optional;
@@ -87,9 +88,7 @@ public class DocSetsResource {
   }
 
   private Optional<XmlDocument> fetchAsXmlDocument(String id) {
-    return documentStore.findDocument(id)
-                        .map(this::toXML)
-                        .map(xml -> new XmlDocument(id, xml));
+    return read(id).map(xml -> new XmlDocument(id, xml));
   }
 
   private Response calcCoCitations(Set<XmlDocument> docs) {
@@ -108,6 +107,15 @@ public class DocSetsResource {
 
   private URI buildLocationUri(UUID id) {
     return UriBuilder.fromPath(PATH).path("{id}").build(id);
+  }
+
+  private Optional<String> read(String id) {
+    try {
+      return Optional.of(documentStore.getOriginalBytes(id)).map(String::new);
+    } catch (IOException e) {
+      LOG.warn("Failed to read {}: {}", id, e.getMessage());
+      return Optional.empty();
+    }
   }
 
   private String toXML(String body) {

@@ -614,12 +614,16 @@ public class ElasticBackend implements AutoCloseable {
     return new PutResult(docId, 201);
   }
 
+  private Path getOriginalPath(String id) {
+    return Paths.get(fileStorageDir, id);
+  }
+
   private void store(String id, String content) throws IOException {
     if (fileStorageDir == null) {
       return;
     }
     requireValid(id);
-    Path path = Paths.get(fileStorageDir, id);
+    Path path = getOriginalPath(id);
     try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
       out.write(content);
     } catch (Throwable e) {
@@ -628,8 +632,12 @@ public class ElasticBackend implements AutoCloseable {
     }
   }
 
+  public byte[] getOriginalBytes(String id) throws IOException {
+    return Files.readAllBytes(getOriginalPath(id));
+  }
+
   public InputStream getOriginal(String id) throws IOException {
-    Path path = Paths.get(fileStorageDir, id);
+    Path path = getOriginalPath(id);
     return new FileInputStream(path.toFile());
   }
 
