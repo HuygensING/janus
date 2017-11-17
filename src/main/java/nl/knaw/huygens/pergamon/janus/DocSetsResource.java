@@ -94,7 +94,7 @@ public class DocSetsResource {
   private Response calcCoCitations(Set<XmlDocument> docs) {
     final Entity<Set<XmlDocument>> entity = Entity.entity(docs, MediaType.APPLICATION_JSON_TYPE);
 
-    LOG.debug("Posting entity to /cocit: {}", entity);
+    LOG.trace("Posting entity to /cocit: {}", entity);
 
     return coCiTarget.path("cocit")
                      .request(MediaType.APPLICATION_JSON_TYPE)
