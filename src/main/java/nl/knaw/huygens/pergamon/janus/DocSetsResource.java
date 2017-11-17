@@ -24,7 +24,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
-import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Optional;
@@ -67,12 +66,7 @@ public class DocSetsResource {
   @Consumes(MediaType.APPLICATION_JSON)
   public Response createDocSet(Set<String> documentIds) {
     final DocSet docSet = docSetStore.createDocSet(documentIds);
-    LOG.debug("generatedId: {}", docSet.getId());
-
-    final URI location = buildLocationUri(docSet.getId());
-    LOG.debug("Location: {}", location);
-
-    return Response.created(location).build();
+    return Response.created(locationOf(docSet)).build();
   }
 
   @GET
@@ -84,11 +78,15 @@ public class DocSetsResource {
                                        .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
                                        .collect(Collectors.toSet());
 
+    LOG.debug("Collected {} document(s) for docSet: {}", docs.size(), docSetId);
+
     return calcCoCitations(docs);
   }
 
   private Optional<XmlDocument> fetchAsXmlDocument(String id) {
-    return read(id).map(xml -> new XmlDocument(id, xml));
+    return documentStore.getOriginalBytes(id)
+                        .map(String::new)
+                        .map(xml -> new XmlDocument(id, xml));
   }
 
   private Response calcCoCitations(Set<XmlDocument> docs) {
@@ -105,17 +103,8 @@ public class DocSetsResource {
     return () -> new NotFoundException(String.format("No document set found with id: %s", docSetId));
   }
 
-  private URI buildLocationUri(UUID id) {
-    return UriBuilder.fromPath(PATH).path("{id}").build(id);
-  }
-
-  private Optional<String> read(String id) {
-    try {
-      return Optional.of(documentStore.getOriginalBytes(id)).map(String::new);
-    } catch (IOException e) {
-      LOG.warn("Failed to read {}: {}", id, e.getMessage());
-      return Optional.empty();
-    }
+  private URI locationOf(DocSet docSet) {
+    return UriBuilder.fromPath(PATH).path("{id}").build(docSet.getId());
   }
 
   private String toXML(String body) {

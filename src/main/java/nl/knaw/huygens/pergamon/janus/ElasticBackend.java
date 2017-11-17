@@ -36,6 +36,8 @@ import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
@@ -88,6 +90,8 @@ import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
  * Backend that stores documents and annotations in an Elasticsearch cluster.
  */
 public class ElasticBackend implements AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticBackend.class);
+
   /**
    * Returns a Response with result as the entity. A null result becomes a 404, non-null a 200.
    * Intended to wrap the result of GETs.
@@ -633,8 +637,13 @@ public class ElasticBackend implements AutoCloseable {
     }
   }
 
-  public byte[] getOriginalBytes(String id) throws IOException {
-    return Files.readAllBytes(getOriginalPath(id));
+  public Optional<byte[]> getOriginalBytes(String id) {
+    try {
+      return Optional.of(Files.readAllBytes(getOriginalPath(id)));
+    } catch (IOException e) {
+      LOG.warn("Failed to get original {}: {}", id, e.getMessage());
+      return Optional.empty();
+    }
   }
 
   public InputStream getOriginal(String id) throws IOException {
