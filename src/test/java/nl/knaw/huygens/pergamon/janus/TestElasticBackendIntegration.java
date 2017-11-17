@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -31,8 +33,10 @@ public class TestElasticBackendIntegration {
   @BeforeClass
   public static void connect() throws IOException {
     try {
-      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE,
-        new Mapping(Collections.singletonList(new Mapping.Field("body", "text", "/*")), true), null);
+      Mapping mapping = new Mapping(asList(new Mapping.Field("body", "text", "/"),
+        new Mapping.Field("author", "keyword", "/author")), false);
+      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE, mapping, null);
+      //new Mapping(Collections.singletonList(new Mapping.Field("body", "text", "/*")), true), null);
       backend.initIndices();
     } catch (ConnectException e) {
       available = false;
@@ -95,26 +99,28 @@ public class TestElasticBackendIntegration {
   @Test
   public void xml() throws Exception {
     String docId = "blabla!";
-    String text = "<msg num=\"1\">hello, <xml num=\"2\" attr=\"extra\"/> world!</msg>";
+    String text = "<msg num=\"1\"><author>tester</author> says hello, <xml num=\"2\" attr=\"extra\"/> world!</msg>";
 
     ElasticBackend.PutResult result = backend.putXml(docId, text);
     assertEquals(201, result.status);
 
     DocAndAnnotations doc = retry(() -> {
       DocAndAnnotations d = backend.getWithAnnotations(result.id, true);
-      assertEquals("hello,  world!", d.text);
-      assertEquals(2, d.annotations.size());
+      assertEquals("tester says hello,  world!", d.text);
+      assertEquals(3, d.annotations.size());
       return d;
     });
 
     assertEquals(docId, doc.id);
 
     List<Annotation> ann = doc.annotations;
-    assertEquals(new Annotation(0, 14, docId, "msg", null, "xml", ann.get(0).id, ImmutableMap.of("num", "1")),
+    assertEquals(new Annotation(0, 26, docId, "msg", null, "xml", ann.get(0).id, ImmutableMap.of("num", "1")),
       ann.get(0));
-    assertEquals(new Annotation(7, 7, docId, "xml", null, "xml", ann.get(1).id,
-        ImmutableMap.of("num", "2", "attr", "extra")),
+    assertEquals(new Annotation(0, 6, docId, "author", null, "xml", ann.get(1).id, emptyMap()),
       ann.get(1));
+    assertEquals(new Annotation(19, 19, docId, "xml", null, "xml", ann.get(2).id,
+        ImmutableMap.of("num", "2", "attr", "extra")),
+      ann.get(2));
   }
 
   @Test

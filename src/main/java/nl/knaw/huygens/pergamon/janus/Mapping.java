@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
 import nu.xom.Document;
 import nu.xom.Element;
+import nu.xom.Node;
 import nu.xom.Nodes;
 import nu.xom.ParsingException;
 import org.apache.commons.lang3.tuple.Triple;
@@ -115,7 +116,12 @@ public class Mapping {
 
     Element body;
     try {
-      body = (Element) root.query(fields.get(0).xpath).get(0);
+      Node node = root.query(fields.get(0).xpath).get(0);
+      if (node instanceof Document) {
+        body = ((Document) node).getRootElement();
+      } else {
+        body = (Element) node;
+      }
     } catch (IndexOutOfBoundsException e) {
       throw new IllegalArgumentException("no value for body field '" + fields.get(0).name + "'");
     }
@@ -142,11 +148,5 @@ public class Mapping {
    */
   public Map<String, Object> asMap() {
     return mapping;
-  }
-
-  public static void main(String[] args) throws IOException, ParsingException {
-    Document doc = XmlParser.fromString("<foo bar='baz'>bar <x/> baz</foo>");
-    Nodes x = doc.query("/foo");
-    System.out.println(x.get(0).getValue());
   }
 }
