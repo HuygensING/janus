@@ -251,14 +251,15 @@ public class ElasticBackend implements AutoCloseable {
         new InputStreamEntity(ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON)));
     }
     if (!indexExists(documentIndex)) {
-      Map<String, Object> innerMap = new HashMap<>();
-      innerMap.put(documentType, mapping.asMap());
-      Map<String, Object> outerMap = new HashMap<>();
-      outerMap.put("mappings", innerMap);
-
       ObjectMapper mapper = Jackson.newObjectMapper();
       org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex,
-        Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(outerMap)));
+        Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(
+          new HashMap<String, Object>() {{
+            put("mappings", new HashMap<String, Object>() {{
+              put(documentType, mapping.asMap());
+            }});
+          }}
+        )));
       int code = r.getStatusLine().getStatusCode();
       if (code < 200 || code >= 300) {
         throw new RuntimeException(String.format("creating document index: %d", code));
@@ -704,11 +705,11 @@ public class ElasticBackend implements AutoCloseable {
                   int sep = places.indexOf(SEPARATOR);
                   String src = places.substring(0, sep);
                   String tgt = places.substring(sep + SEPARATOR.length(), places.length());
-                  Map<String, Object> r = new HashMap<>();
-                  r.put("weight", bucket.getDocCount());
-                  r.put("source", src);
-                  r.put("target", tgt);
-                  return r;
+                  return new HashMap<String, Object>() {{
+                    put("weight", bucket.getDocCount());
+                    put("source", src);
+                    put("target", tgt);
+                  }};
                 })
                 .collect(Collectors.toList());
   }
@@ -772,10 +773,6 @@ public class ElasticBackend implements AutoCloseable {
 
     PutResult(String id, Response.Status status, String message) {
       this(id, status.getStatusCode(), message);
-    }
-
-    PutResult(String id, Response.Status status) {
-      this(id, status, null);
     }
 
     Response asResponse() {
