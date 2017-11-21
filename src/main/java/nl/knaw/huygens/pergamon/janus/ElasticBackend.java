@@ -1,5 +1,6 @@
 package nl.knaw.huygens.pergamon.janus;
 
+import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -225,9 +226,33 @@ public class ElasticBackend implements AutoCloseable {
     return new HttpHost(addr, port);
   }
 
+  private class EsClusterHealthCheck extends HealthCheck {
+    private final boolean failOnYellow;
+
+    EsClusterHealthCheck(boolean failOnYellow) {
+      this.failOnYellow = failOnYellow;
+    }
+
+    @Override
+    protected Result check() throws Exception {
+      org.elasticsearch.client.Response r = loClient.performRequest("GET", "/_cluster/health");
+      int httpstatus = r.getStatusLine().getStatusCode();
+      if (httpstatus < 200 || httpstatus >= 300) {
+        return Result.unhealthy(String.format("Got %d from %s /_cluster/health", httpstatus, r.getHost()));
+      }
+      Object status = Jackson.newObjectMapper()
+                             .readValue(r.getEntity().getContent(), Map.class)
+                             .get("status");
+      if ("red".equals(status) || failOnYellow && "yellow".equals(status)) {
+        return Result.unhealthy(String.format("ES cluster status = %s", status));
+      }
+      return Result.healthy();
+    }
+  }
+
   public void registerHealthChecks(HealthCheckRegistry registry) {
     // These need to be rewritten to use the Elasticsearch REST client.
-    // registry.register("ES cluster health", new EsClusterHealthCheck(client));
+    registry.register("ES cluster health", new EsClusterHealthCheck(false));
     // registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
     // registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
   }
