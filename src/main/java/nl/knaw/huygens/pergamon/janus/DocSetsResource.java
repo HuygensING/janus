@@ -12,12 +12,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -32,11 +34,14 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static nl.knaw.huygens.pergamon.janus.DocSetsResource.CoCitationFormat.FORMAT_PARAM_NAME;
+
 @Api(DocSetsResource.PATH)
 @Path(DocSetsResource.PATH)
 @Produces(MediaType.APPLICATION_JSON)
 public class DocSetsResource {
   static final String PATH = "docsets";
+
 
   private static final Logger LOG = LoggerFactory.getLogger(DocSetsResource.class);
 
@@ -71,7 +76,8 @@ public class DocSetsResource {
 
   @GET
   @Path("{id}/cocitations")
-  public Response getCoCitations(@PathParam("id") UUID docSetId) {
+  public Response getCoCitations(@PathParam("id") UUID docSetId,
+                                 @QueryParam(FORMAT_PARAM_NAME) @DefaultValue("simple") CoCitationFormat format) {
     Set<XmlDocument> docs = docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId)).getDocIds()
                                        .parallelStream()
                                        .map(this::fetchAsXmlDocument)
@@ -80,7 +86,7 @@ public class DocSetsResource {
 
     LOG.debug("Collected {} document(s) for docSet: {}", docs.size(), docSetId);
 
-    return calcCoCitations(docs);
+    return calcCoCitations(docs, format);
   }
 
   private Optional<XmlDocument> fetchAsXmlDocument(String id) {
@@ -89,12 +95,13 @@ public class DocSetsResource {
                         .map(xml -> new XmlDocument(id, xml));
   }
 
-  private Response calcCoCitations(Set<XmlDocument> docs) {
+  private Response calcCoCitations(Set<XmlDocument> docs, CoCitationFormat format) {
     final Entity<Set<XmlDocument>> entity = Entity.entity(docs, MediaType.APPLICATION_JSON_TYPE);
 
     LOG.trace("Posting entity to /cocit: {}", entity);
 
     return coCiTarget.path("cocit")
+                     .queryParam(FORMAT_PARAM_NAME, format)
                      .request(MediaType.APPLICATION_JSON_TYPE)
                      .post(entity);
   }
@@ -111,6 +118,12 @@ public class DocSetsResource {
     final Element root = new Element("hack");
     root.appendChild(new Text(body));
     return new Document(root).toXML();
+  }
+
+  protected enum CoCitationFormat {
+    full, graph, simple;
+
+    static final String FORMAT_PARAM_NAME = "format";
   }
 
   static class XmlDocument {
