@@ -250,11 +250,24 @@ public class ElasticBackend implements AutoCloseable {
     }
   }
 
+  private class EsIndexExistsHealthCheck extends HealthCheck {
+    @Override
+    protected Result check() throws Exception {
+      org.elasticsearch.client.Response r =
+        loClient.performRequest("GET", String.format("%s/_stats", ANNOTATION_INDEX));
+      int httpstatus = r.getStatusLine().getStatusCode();
+      if (httpstatus < 200 || httpstatus >= 300) {
+        return Result.unhealthy(String.format("Got %d when checking for index %s", httpstatus, ANNOTATION_INDEX));
+      }
+      return Result.healthy();
+    }
+  }
+
   public void registerHealthChecks(HealthCheckRegistry registry) {
     // These need to be rewritten to use the Elasticsearch REST client.
     registry.register("ES cluster health", new EsClusterHealthCheck(false));
     // registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
-    // registry.register("ES index exists health", new EsIndexExistsHealthCheck(client, ANNOTATION_INDEX));
+    registry.register("ES index exists health", new EsIndexExistsHealthCheck());
   }
 
   @Override
