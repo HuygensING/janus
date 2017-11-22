@@ -167,10 +167,6 @@ public class DocSetsResource {
     return () -> new NotFoundException(String.format("No document set found with id: %s", docSetId));
   }
 
-  private Supplier<NotFoundException> noSuchDocument(String documentId) {
-    return () -> new NotFoundException(String.format("No document found with id: %s", documentId));
-  }
-
   private URI locationOf(DocSet docSet) {
     return UriBuilder.fromPath(PATH).path("{id}").build(docSet.getId());
   }
