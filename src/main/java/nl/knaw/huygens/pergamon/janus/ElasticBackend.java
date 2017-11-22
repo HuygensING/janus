@@ -526,7 +526,6 @@ public class ElasticBackend implements AutoCloseable {
     return setBody(id, bodyId);
   }
 
-
   /**
    * Set body field of annotation to the id of a document.
    * Precondition (using the default addBody) is that annId exists and its body is null.
@@ -603,6 +602,7 @@ public class ElasticBackend implements AutoCloseable {
 
       return putXml(fields.getLeft(), body, fields.getRight());
     } catch (Throwable e) {
+      deleteFromStore(id);
       return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
@@ -677,6 +677,13 @@ public class ElasticBackend implements AutoCloseable {
       Files.delete(path);
       throw e;
     }
+  }
+
+  private void deleteFromStore(String id) throws IOException {
+    if (fileStorageDir == null) {
+      return;
+    }
+    Files.delete(Paths.get(fileStorageDir, id));
   }
 
   public Optional<byte[]> getOriginalBytes(String id) {
