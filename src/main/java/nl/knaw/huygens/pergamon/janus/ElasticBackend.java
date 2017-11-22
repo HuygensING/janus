@@ -157,8 +157,8 @@ public class ElasticBackend implements AutoCloseable {
 
   private final RestHighLevelClient hiClient;
   private final RestClient loClient;
-  final String documentIndex;
-  final String documentType;
+  private final String documentIndex;
+  private final String documentType;
 
   private final String fileStorageDir;
 
@@ -712,8 +712,8 @@ public class ElasticBackend implements AutoCloseable {
   // Because of return type limitations, we have to return a single string
   // to represent a pair. The SEPARATOR is chosen to be as unlikely as possible.
   // It must not contain a %, since it will be passed through String.format.
-  static final String SEPARATOR = "$$\t\t^^__";
-  static final String PAIR_QUERY =
+  private static final String SEPARATOR = "$$\t\t^^__";
+  private static final String PAIR_QUERY =
     "  def s = doc['%s'].value;" +
       "def r = doc['%s'].value;" +
       "if (s.compareTo(r) < 0) { s + '" + SEPARATOR + "' + r } else { r + '" + SEPARATOR + "' + s }";
