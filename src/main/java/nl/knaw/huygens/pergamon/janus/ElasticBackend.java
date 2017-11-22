@@ -683,7 +683,7 @@ public class ElasticBackend implements AutoCloseable {
     if (fileStorageDir == null) {
       return;
     }
-    Files.delete(Paths.get(fileStorageDir, id));
+    Files.delete(getOriginalPath(id));
   }
 
   public Optional<byte[]> getOriginalBytes(String id) {
