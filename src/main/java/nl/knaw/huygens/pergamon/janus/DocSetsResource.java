@@ -31,6 +31,7 @@ import javax.ws.rs.core.UriBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,10 +79,20 @@ public class DocSetsResource {
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   public Response createDocSet(String query) throws IOException {
-    final org.elasticsearch.client.Response response = documentStore.search(query);
+    final org.elasticsearch.client.Response response = documentStore.search(sanitise(query));
     final Set<String> documentIds = streamHits(response.getEntity()).map(this::extractId).collect(Collectors.toSet());
     final DocSet docSet = docSetStore.createDocSet(documentIds);
     return Response.created(locationOf(docSet)).build();
+  }
+
+  private String sanitise(String query) throws IOException {
+    final Map dirty = mapper.readValue(query, Map.class);
+
+    // Strip things like 'size: 0' and '_source: XXX'
+    final Map<String, Object> clean = new HashMap<>();
+    clean.put("query", dirty.get("query"));
+
+    return mapper.writeValueAsString(clean);
   }
 
   @SuppressWarnings("unchecked")
