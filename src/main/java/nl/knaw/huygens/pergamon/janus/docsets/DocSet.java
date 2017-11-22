@@ -14,10 +14,14 @@ public interface DocSet {
 
   Set<String> getDocIds();
 
+  boolean addDocument(String id);
+
   static DocSet fromDocumentIds(Set<String> documentIds) {
     final UUID id = UUID.randomUUID();
 
     return new DocSet() {
+      private final Set<String> documents = documentIds;
+
       @Override
       public UUID getId() {
         return id;
@@ -26,6 +30,11 @@ public interface DocSet {
       @Override
       public Set<String> getDocIds() {
         return Collections.unmodifiableSet(documentIds);
+      }
+
+      @Override
+      public boolean addDocument(String id) {
+        return documentIds.add(id);
       }
 
       @Override

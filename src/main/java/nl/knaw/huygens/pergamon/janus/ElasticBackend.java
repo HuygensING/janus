@@ -338,6 +338,13 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   /**
+   * Check if a document with the given id exists.
+   */
+  public boolean documentExists(String id) {
+    return exists(documentIndex, documentType, id);
+  }
+
+  /**
    * Find the document with the given id.
    */
   public Optional<String> findDocument(String id) {
@@ -788,6 +795,14 @@ public class ElasticBackend implements AutoCloseable {
   private GetResponse get(String index, String type, String id) {
     try {
       return hiClient.get(getRequest(index).type(type).id(id));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private boolean exists(String index, String type, String id) {
+    try {
+      return hiClient.exists(getRequest(index).type(type).id(id));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

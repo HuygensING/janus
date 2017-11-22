@@ -72,7 +72,7 @@ public class DocSetsResource {
   @Path("{id}")
   public DocSet findDocSet(@PathParam("id") UUID docSetId) {
     LOG.warn("Getting docSet: {}", docSetId);
-    return docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId));
+    return docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId));
   }
 
   @POST
@@ -108,17 +108,34 @@ public class DocSetsResource {
   @DELETE
   @Path("{id}")
   public void deleteDocSet(@PathParam("id") UUID docSetId) {
-    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId));
+    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId));
     if (!docSetStore.delete(docSet)) {
       throw new WebApplicationException(String.format("Failed to remove document set: %s", docSet.getId()));
     }
+  }
+
+  @POST
+  @Path("{id}/documents")
+  public Response addDocument(@PathParam("id") UUID docSetId, Set<String> documentIds) {
+    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId));
+    final int origCount = docSet.getDocIds().size();
+
+    documentIds.stream()
+               .filter(documentStore::documentExists)
+               .forEach(docSet::addDocument);
+
+    if (docSet.getDocIds().size() == origCount) {
+      return Response.noContent().build(); // effectively, nothing was added
+    }
+
+    return Response.ok(docSet).build();
   }
 
   @GET
   @Path("{id}/cocitations")
   public Response getCoCitations(@PathParam("id") UUID docSetId,
                                  @QueryParam(FORMAT_PARAM_NAME) @DefaultValue("simple") CoCitationFormat format) {
-    Set<XmlDocument> docs = docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId)).getDocIds()
+    Set<XmlDocument> docs = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId)).getDocIds()
                                        .parallelStream()
                                        .map(this::fetchAsXmlDocument)
                                        .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
@@ -146,8 +163,12 @@ public class DocSetsResource {
                      .post(entity);
   }
 
-  private Supplier<NotFoundException> notFound(UUID docSetId) {
+  private Supplier<NotFoundException> noSuchDocSet(UUID docSetId) {
     return () -> new NotFoundException(String.format("No document set found with id: %s", docSetId));
+  }
+
+  private Supplier<NotFoundException> noSuchDocument(String documentId) {
+    return () -> new NotFoundException(String.format("No document found with id: %s", documentId));
   }
 
   private URI locationOf(DocSet docSet) {
