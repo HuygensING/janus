@@ -1,6 +1,7 @@
 package nl.knaw.huygens.pergamon.janus;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.MoreObjects;
 import io.swagger.annotations.Api;
 import nl.knaw.huygens.pergamon.janus.docsets.DocSet;
@@ -8,6 +9,7 @@ import nl.knaw.huygens.pergamon.janus.docsets.DocSetStore;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Text;
+import org.apache.http.HttpEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,13 +28,17 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static nl.knaw.huygens.pergamon.janus.DocSetsResource.CoCitationFormat.FORMAT_PARAM_NAME;
 
@@ -48,11 +54,13 @@ public class DocSetsResource {
   private final ElasticBackend documentStore;
   private final DocSetStore docSetStore;
   private final WebTarget coCiTarget;
+  private final ObjectMapper mapper;
 
   DocSetsResource(ElasticBackend documentStore, DocSetStore docSetStore, WebTarget coCiTarget) {
     this.documentStore = documentStore;
     this.docSetStore = docSetStore;
     this.coCiTarget = coCiTarget;
+    this.mapper = new ObjectMapper();
   }
 
   @GET
@@ -69,9 +77,22 @@ public class DocSetsResource {
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  public Response createDocSet(Set<String> documentIds) {
+  public Response createDocSet(String query) throws IOException {
+    final org.elasticsearch.client.Response response = documentStore.search(query);
+    final Set<String> documentIds = streamHits(response.getEntity()).map(this::extractId).collect(Collectors.toSet());
     final DocSet docSet = docSetStore.createDocSet(documentIds);
     return Response.created(locationOf(docSet)).build();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Stream<Map> streamHits(HttpEntity entity) throws IOException {
+    final Map map = mapper.readValue(entity.getContent(), Map.class);
+    final Map hits = (Map) map.get("hits");
+    return ((List<Map>) hits.get("hits")).stream();
+  }
+
+  private String extractId(Map hit) {
+    return hit.get("_id").toString();
   }
 
   @GET
