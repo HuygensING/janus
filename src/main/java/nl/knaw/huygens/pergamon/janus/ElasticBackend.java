@@ -162,6 +162,8 @@ public class ElasticBackend implements AutoCloseable {
 
   private final String fileStorageDir;
 
+  private final String esSearchEndpoint;
+
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.
    *
@@ -203,6 +205,8 @@ public class ElasticBackend implements AutoCloseable {
                          .build();
 
     hiClient = new RestHighLevelClient(loClient);
+
+    esSearchEndpoint = String.format("%s/%s/_search", documentIndex, documentType);
   }
 
   // Parse address spec of the form <addr>[:<port>]
@@ -700,8 +704,8 @@ public class ElasticBackend implements AutoCloseable {
   public org.elasticsearch.client.Response search(String query) throws IOException {
     org.elasticsearch.client.Response r;
     try {
-      r = loClient.performRequest("GET", String.format("%s/%s/_search", documentIndex, documentType),
-        Collections.emptyMap(), new StringEntity(query, APPLICATION_JSON));
+      final StringEntity entity = new StringEntity(query, APPLICATION_JSON);
+      r = loClient.performRequest("GET", esSearchEndpoint, Collections.emptyMap(), entity);
     } catch (ResponseException e) {
       r = e.getResponse();
     }
