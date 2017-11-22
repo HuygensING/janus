@@ -37,4 +37,9 @@ public class InMemoryDocSetStore implements DocSetStore {
   public Optional<DocSet> findDocSet(UUID uuid) {
     return Optional.ofNullable(getDocSet(uuid));
   }
+
+  @Override
+  public boolean delete(DocSet docSet) {
+    return memoryStore.remove(docSet.getId()) != null;
+  }
 }

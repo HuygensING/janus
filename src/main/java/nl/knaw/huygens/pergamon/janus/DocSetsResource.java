@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -22,6 +23,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -104,6 +106,15 @@ public class DocSetsResource {
 
   private String extractId(Map hit) {
     return hit.get("_id").toString();
+  }
+
+  @DELETE
+  @Path("{id}")
+  public void deleteDocSet(@PathParam("id") UUID docSetId) {
+    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(notFound(docSetId));
+    if (!docSetStore.delete(docSet)) {
+      throw new WebApplicationException(String.format("Failed to remove document set: %s", docSet.getId()));
+    }
   }
 
   @GET

@@ -13,4 +13,6 @@ public interface DocSetStore {
   Optional<DocSet> findDocSet(UUID uuid);
 
   DocSet getDocSet(UUID uuid);
+
+  boolean delete(DocSet docSet);
 }
