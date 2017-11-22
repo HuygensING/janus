@@ -6,9 +6,6 @@ import com.google.common.base.MoreObjects;
 import io.swagger.annotations.Api;
 import nl.knaw.huygens.pergamon.janus.docsets.DocSet;
 import nl.knaw.huygens.pergamon.janus.docsets.DocSetStore;
-import nu.xom.Document;
-import nu.xom.Element;
-import nu.xom.Text;
 import org.apache.http.HttpEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,12 +152,6 @@ public class DocSetsResource {
 
   private URI locationOf(DocSet docSet) {
     return UriBuilder.fromPath(PATH).path("{id}").build(docSet.getId());
-  }
-
-  private String toXML(String body) {
-    final Element root = new Element("hack");
-    root.appendChild(new Text(body));
-    return new Document(root).toXML();
   }
 
   protected enum CoCitationFormat {
