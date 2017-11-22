@@ -154,6 +154,7 @@ public class DocSetsResource {
     return UriBuilder.fromPath(PATH).path("{id}").build(docSet.getId());
   }
 
+  @SuppressWarnings("unused")
   protected enum CoCitationFormat {
     full, graph, simple;
 
