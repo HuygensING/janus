@@ -5,6 +5,7 @@ import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
@@ -55,7 +56,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -300,12 +300,9 @@ public class ElasticBackend implements AutoCloseable {
       ObjectMapper mapper = Jackson.newObjectMapper();
       org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex,
         Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(
-          new HashMap<String, Object>() {{
-            put("mappings", new HashMap<String, Object>() {{
-              put(documentType, mapping.asMap());
-            }});
-          }}
-        )));
+          ImmutableMap.<String, Object>of(
+            "mappings", ImmutableMap.<String, Object>of(
+              documentType, mapping.asMap())))));
       int code = r.getStatusLine().getStatusCode();
       if (code < 200 || code >= 300) {
         throw new RuntimeException(String.format("creating document index: %d", code));
@@ -770,11 +767,10 @@ public class ElasticBackend implements AutoCloseable {
                   int sep = places.indexOf(SEPARATOR);
                   String src = places.substring(0, sep);
                   String tgt = places.substring(sep + SEPARATOR.length(), places.length());
-                  return new HashMap<String, Object>() {{
-                    put("weight", bucket.getDocCount());
-                    put("source", src);
-                    put("target", tgt);
-                  }};
+                  return ImmutableMap.<String, Object>of(
+                    "weight", bucket.getDocCount(),
+                    "source", src,
+                    "target", tgt);
                 })
                 .collect(Collectors.toList());
   }
