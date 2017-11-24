@@ -9,7 +9,10 @@ import org.junit.Test;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.ConnectException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -33,15 +36,19 @@ public class TestElasticBackendIntegration {
   private static boolean available = true;
   private static ElasticBackend backend;
 
+  private static Path tempDir;
+
   @BeforeClass
   public static void connect() throws IOException {
     try {
+      tempDir = Files.createTempDirectory(null);
       Mapping mapping = new Mapping(asList(
         new Mapping.Field("body", "text", "/"),
         new Mapping.Field("author", "keyword", "//author"),
         new Mapping.Field("receiver", "keyword", "//receiver")
       ), false);
-      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE, mapping, null);
+      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE, mapping,
+        tempDir.toString());
       backend.initIndices();
     } catch (ConnectException e) {
       available = false;
@@ -55,6 +62,14 @@ public class TestElasticBackendIntegration {
       backend.removeIndices();
     }
     backend.close();
+    Files.list(tempDir).forEach(p -> {
+      try {
+        Files.delete(p);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
+    Files.delete(tempDir);
   }
 
   @Test
@@ -226,7 +241,10 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void xmlNullId() throws Exception {
-    putXml("<hello>world</hello>");
+    String xml = "<hello>world</hello>";
+    String id = putXml(xml);
+    String stored = new String(Files.readAllBytes(tempDir.resolve(id)));
+    assertEquals(xml, stored);
   }
 
   @Test
@@ -255,10 +273,11 @@ public class TestElasticBackendIntegration {
     });
   }
 
-  private void putXml(String xml) throws IOException {
+  private String putXml(String xml) throws IOException {
     ElasticBackend.PutResult result = backend.putXml(null, xml);
     assertEquals(result.message, 201, result.status);
     assertNotNull(result.id);
+    return result.id;
   }
 
   // Block of code with assertions. May return a value for convenience.
@@ -270,7 +289,7 @@ public class TestElasticBackendIntegration {
     void run() throws Exception;
   }
 
-  private static int REPEATS = 7;
+  private static int REPEATS = 10;
   private static long WAIT = 300; // milliseconds
 
   // Retries an assertion at most repeats times, sleeping millis in between.

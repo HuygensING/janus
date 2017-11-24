@@ -179,7 +179,7 @@ public class ElasticBackend implements AutoCloseable {
     this(hosts, documentIndex, documentType, ANNOTATION_INDEX, ANNOTATION_TYPE, mapping, storageDir);
   }
 
-  // Final two arguments are for test purposes only.
+  // Arguments annotation{Index,Type} are for test purposes only.
   ElasticBackend(List<String> hosts, String documentIndex, String documentType,
                  String annotationIndex, String annotationType, Mapping mapping, String storageDir)
     throws UnknownHostException {
