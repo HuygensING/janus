@@ -11,6 +11,7 @@ import nu.xom.Text;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -70,6 +71,12 @@ public class DocumentsResource {
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id,
                       @QueryParam("recursive") @DefaultValue("true") boolean recursive) throws IOException {
     return ElasticBackend.asResponse(backend.getWithAnnotations(id, recursive));
+  }
+
+  @DELETE
+  @Path("{id}")
+  public Response delete(@ApiParam(DOCUMENT_ID) @PathParam("id") @NotEmpty String id) throws IOException {
+    return ElasticBackend.asResponse(backend.delete(id));
   }
 
   @GET

@@ -2,6 +2,11 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
 import io.dropwizard.jackson.Jackson;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -138,6 +143,17 @@ public class TestElasticBackendIntegration {
     assertEquals(new Annotation(19, 19, docId, "xml", null, "xml", ann.get(2).id,
         ImmutableMap.of("num", "2", "attr", "extra")),
       ann.get(2));
+
+    RestStatus r = backend.delete(docId);
+    assertEquals(200, r.getStatus());
+
+    retry(() -> {
+      SearchResponse resp =
+        backend.hiClient.search(new SearchRequest(ANN_INDEX)
+          .types(ANN_TYPE).source(SearchSourceBuilder.searchSource()
+                                                     .query(new TermQueryBuilder("root", docId))));
+      assertEquals(0, resp.getHits().getHits().length);
+    });
   }
 
   @Test

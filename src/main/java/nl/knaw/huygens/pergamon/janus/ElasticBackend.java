@@ -19,6 +19,8 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.delete.DeleteRequest;
+import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
@@ -52,6 +54,7 @@ import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -149,6 +152,8 @@ public class ElasticBackend implements AutoCloseable {
   private static final String ANNOTATION_TYPE = "annotation";
   private static final String ANNOTATION_MAPPING_IN_JSON = "/annotation-mapping.json";
 
+  private static ObjectMapper mapper = Jackson.newObjectMapper();
+
   // Name of ES index used to store annotations.
   private final String annotationIndex;
   // Type name of annotations in the ES index.
@@ -156,7 +161,7 @@ public class ElasticBackend implements AutoCloseable {
 
   private final Mapping mapping;
 
-  private final RestHighLevelClient hiClient;
+  final RestHighLevelClient hiClient;
   private final RestClient loClient;
   private final String documentIndex;
   private final String documentType;
@@ -298,7 +303,6 @@ public class ElasticBackend implements AutoCloseable {
         new InputStreamEntity(ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON)));
     }
     if (!indexExists(documentIndex)) {
-      ObjectMapper mapper = Jackson.newObjectMapper();
       org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex,
         Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(
           ImmutableMap.<String, Object>of(
@@ -666,6 +670,37 @@ public class ElasticBackend implements AutoCloseable {
       }
     }
     return new PutResult(docId, 201);
+  }
+
+  /**
+   * Deletes a document and all annotations pointing to it (directly or indirectly).
+   */
+  public RestStatus delete(String id) throws IOException {
+    boolean fileFound = true;
+    if (fileStorageDir != null) {
+      try {
+        Files.delete(Paths.get(fileStorageDir, id));
+      } catch (NoSuchFileException e) {
+        fileFound = false;
+      }
+    }
+
+    org.elasticsearch.client.Response annR =
+      loClient.performRequest("POST", String.format("%s/%s/_delete_by_query", annotationIndex, annotationType),
+        Collections.emptyMap(),
+        new StringEntity(
+          mapper.writeValueAsString(
+            ImmutableMap.of("query", ImmutableMap.of("term", ImmutableMap.of("root", id))))));
+    if (annR.getStatusLine().getStatusCode() != 200) {
+      LOG.warn("Got {} when deleting annotation for {}", annR.getStatusLine().getStatusCode(), id);
+    }
+
+    DeleteResponse docR =
+      hiClient.delete(new DeleteRequest(documentIndex, documentType, id));
+    if (docR.status() == RestStatus.OK && !fileFound) {
+      LOG.warn("{} was in Elasticsearch but not in the file store", id);
+    }
+    return docR.status();
   }
 
   private Path getOriginalPath(String id) {
