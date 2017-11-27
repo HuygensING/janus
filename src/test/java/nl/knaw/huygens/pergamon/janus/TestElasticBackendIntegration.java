@@ -118,7 +118,7 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void xml() throws Exception {
-    String docId = "blabla!";
+    String docId = "blabla";
     String text = "<msg num=\"1\"><author>tester</author> says hello, <xml num=\"2\" attr=\"extra\"/> world!</msg>";
 
     ElasticBackend.PutResult result = backend.putXml(docId, text);

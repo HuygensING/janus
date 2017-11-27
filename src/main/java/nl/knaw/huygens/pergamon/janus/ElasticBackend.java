@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -571,19 +572,21 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public PutResult putTxt(String id, String content) throws IOException {
+    if (id == null) {
+      // XXX how to let Elasticsearch determine the id?
+      // Without this step, we get:
+      // ActionRequestValidationException: an id must be provided if version type or value are set
+      id = UUID.randomUUID().toString();
+    }
     try {
-      if (id == null) {
-        // XXX how to let Elasticsearch determine the id?
-        // Without this step, we get:
-        // ActionRequestValidationException: an id must be provided if version type or value are set
-        id = UUID.randomUUID().toString();
-      }
       store(id, content);
       IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
                                                     .source(jsonBuilder().startObject()
                                                                          .field("body", content)
                                                                          .endObject());
       return makePutResult(hiClient.index(req));
+    } catch (FileAlreadyExistsException e) {
+      return new PutResult(String.format("%s already exists in file store", id), 409);
     } catch (ElasticsearchStatusException e) {
       return new PutResult(e.toString(), e.status().getStatus());
     }
