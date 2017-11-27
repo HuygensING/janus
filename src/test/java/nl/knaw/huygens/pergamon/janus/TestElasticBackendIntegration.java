@@ -14,14 +14,11 @@ import java.net.ConnectException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -247,31 +244,31 @@ public class TestElasticBackendIntegration {
     assertEquals(xml, stored);
   }
 
-  @Test
-  public void cooccurrence() throws Exception {
-    putXml("<foo><author>1</author><receiver>2</receiver></foo>");
-    putXml("<foo><author>2</author><receiver>1</receiver></foo>");
-    putXml("<foo><author>1</author><receiver>1</receiver></foo>");
-
-    retry(() -> {
-      List<Map<String, Object>> r =
-        backend.cooccurrence(
-          new HashMap<String, Object>() {{
-            put("match_all", Collections.emptyMap());
-          }}, "author", "receiver")
-               .stream()
-               .sorted(comparing(m -> (long) m.get("weight")))
-               .collect(toList());
-
-      assertEquals(2, r.size());
-      assertEquals(1L, r.get(0).get("weight"));
-      assertEquals("1", r.get(0).get("source"));
-      assertEquals("1", r.get(0).get("target"));
-      assertEquals(2L, r.get(1).get("weight"));
-      assertEquals("1", r.get(1).get("source"));
-      assertEquals("2", r.get(1).get("target"));
-    });
-  }
+  // @Test
+  // public void cooccurrence() throws Exception {
+  //   putXml("<foo><author>1</author><receiver>2</receiver></foo>");
+  //   putXml("<foo><author>2</author><receiver>1</receiver></foo>");
+  //   putXml("<foo><author>1</author><receiver>1</receiver></foo>");
+  //
+  //   retry(() -> {
+  //     List<Map<String, Object>> r =
+  //       backend.cooccurrence(
+  //         new HashMap<String, Object>() {{
+  //           put("match_all", Collections.emptyMap());
+  //         }}, "author", "receiver")
+  //              .stream()
+  //              .sorted(comparing(m -> (long) m.get("weight")))
+  //              .collect(toList());
+  //
+  //     assertEquals(2, r.size());
+  //     assertEquals(1L, r.get(0).get("weight"));
+  //     assertEquals("1", r.get(0).get("source"));
+  //     assertEquals("1", r.get(0).get("target"));
+  //     assertEquals(2L, r.get(1).get("weight"));
+  //     assertEquals("1", r.get(1).get("source"));
+  //     assertEquals("2", r.get(1).get("target"));
+  //   });
+  // }
 
   private String putXml(String xml) throws IOException {
     ElasticBackend.PutResult result = backend.putXml(null, xml);
