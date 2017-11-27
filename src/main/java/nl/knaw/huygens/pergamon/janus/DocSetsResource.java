@@ -81,7 +81,10 @@ public class DocSetsResource {
     final org.elasticsearch.client.Response response = documentStore.search(sanitise(query));
     final Set<String> documentIds = streamHits(response.getEntity()).map(this::extractId).collect(Collectors.toSet());
     final DocSet docSet = docSetStore.createDocSet(documentIds);
-    return Response.created(locationOf(docSet)).build();
+    return Response
+      .created(locationOf(docSet))
+      .header("Access-Control-Expose-Headers", "Location")
+      .build();
   }
 
   private String sanitise(String query) throws IOException {
