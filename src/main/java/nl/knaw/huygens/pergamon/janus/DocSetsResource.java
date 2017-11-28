@@ -93,6 +93,7 @@ public class DocSetsResource {
     // Strip things like 'size: 0' and '_source: XXX'
     final Map<String, Object> clean = new HashMap<>();
     clean.put("query", dirty.get("query"));
+    clean.put("size", 10000);
 
     return mapper.writeValueAsString(clean);
   }
