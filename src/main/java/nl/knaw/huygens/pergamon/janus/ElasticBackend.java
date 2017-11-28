@@ -584,13 +584,15 @@ public class ElasticBackend implements AutoCloseable {
     }
     try {
       store(id, content);
+    } catch (FileAlreadyExistsException e) {
+      return new PutResult(String.format("%s already exists in file store", id), 409);
+    }
+    try {
       IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
                                                     .source(jsonBuilder().startObject()
                                                                          .field("body", content)
                                                                          .endObject());
       return makePutResult(hiClient.index(req));
-    } catch (FileAlreadyExistsException e) {
-      return new PutResult(String.format("%s already exists in file store", id), 409);
     } catch (ElasticsearchStatusException e) {
       return new PutResult(e.toString(), e.status().getStatus());
     }
@@ -603,7 +605,11 @@ public class ElasticBackend implements AutoCloseable {
     if (id == null) {
       id = UUID.randomUUID().toString();
     }
-    store(id, document);
+    try {
+      store(id, document);
+    } catch (FileAlreadyExistsException e) {
+      return new PutResult(id, CONFLICT);
+    }
     try {
       Document xml = XmlParser.fromString(document);
       Triple<String, Element, Map<String, String>> fields = mapping.apply(xml);
@@ -875,6 +881,10 @@ public class ElasticBackend implements AutoCloseable {
     }
 
     PutResult(String id, int status) {
+      this(id, status, null);
+    }
+
+    PutResult(String id, Response.Status status) {
       this(id, status, null);
     }
 
