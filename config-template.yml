@@ -31,7 +31,7 @@ elasticsearch:
     #  xpath: "/doc/@date"
 
 jerseyClient:
-  timeout: 5s
+  timeout: 1m
 
 logging:
   level: INFO
