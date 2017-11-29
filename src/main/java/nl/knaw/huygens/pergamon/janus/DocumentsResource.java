@@ -199,6 +199,6 @@ public class DocumentsResource {
   @Path("{id}")
   @Consumes(MediaType.APPLICATION_XML)
   public Response putXml(@PathParam("id") String id, String content) throws IOException {
-    return backend.putXml(id, content).asResponse();
+    return backend.updateXml(id, content).asResponse();
   }
 }

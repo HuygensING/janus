@@ -154,6 +154,9 @@ public class TestElasticBackendIntegration {
                                                      .query(new TermQueryBuilder("root", docId))));
       assertEquals(0, resp.getHits().getHits().length);
     });
+
+    int status = backend.updateXml(docId, "<msg num=\"2\"></msg>").status;
+    assertEquals(201, status);
   }
 
   @Test

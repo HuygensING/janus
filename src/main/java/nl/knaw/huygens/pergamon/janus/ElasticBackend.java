@@ -247,7 +247,7 @@ public class ElasticBackend implements AutoCloseable {
     protected Result check() throws Exception {
       org.elasticsearch.client.Response r = loClient.performRequest("GET", "/_cluster/health");
       int httpstatus = r.getStatusLine().getStatusCode();
-      if (httpstatus < 200 || httpstatus >= 300) {
+      if (!success(httpstatus)) {
         return Result.unhealthy(String.format("Got %d from %s /_cluster/health", httpstatus, r.getHost()));
       }
       Object status = Jackson.newObjectMapper()
@@ -266,7 +266,7 @@ public class ElasticBackend implements AutoCloseable {
       org.elasticsearch.client.Response r =
         loClient.performRequest("GET", String.format("%s/_stats", ANNOTATION_INDEX));
       int httpstatus = r.getStatusLine().getStatusCode();
-      if (httpstatus < 200 || httpstatus >= 300) {
+      if (!success(httpstatus)) {
         return Result.unhealthy(String.format("Got %d when checking for index %s", httpstatus, ANNOTATION_INDEX));
       }
       return Result.healthy();
@@ -309,7 +309,7 @@ public class ElasticBackend implements AutoCloseable {
             "mappings", ImmutableMap.<String, Object>of(
               documentType, mapping.asMap())))));
       int code = r.getStatusLine().getStatusCode();
-      if (code < 200 || code >= 300) {
+      if (!success(code)) {
         throw new RuntimeException(String.format("creating document index: %d", code));
       }
     }
@@ -556,7 +556,7 @@ public class ElasticBackend implements AutoCloseable {
 
   private PutResult makePutResult(IndexResponse response) {
     int status = response.status().getStatus();
-    String id = (status < 200 || status >= 300) ? null : response.getId();
+    String id = success(status) ? response.getId() : null;
     return new PutResult(id, status);
   }
 
@@ -640,7 +640,7 @@ public class ElasticBackend implements AutoCloseable {
       .type(documentType).id(docId).create(true)
       .source(doc));
     int status = response.status().getStatus();
-    if (status < 200 || status >= 300) {
+    if (!success(status)) {
       return new PutResult(null, status);
     }
 
@@ -670,7 +670,7 @@ public class ElasticBackend implements AutoCloseable {
     if (bulk.numberOfActions() > 0) {
       for (BulkItemResponse item : hiClient.bulk(bulk)) {
         status = item.status().getStatus();
-        if (status < 200 || status >= 300) {
+        if (!success(status)) {
           return new PutResult(docId, status);
         }
       }
@@ -685,7 +685,7 @@ public class ElasticBackend implements AutoCloseable {
     boolean fileFound = true;
     if (fileStorageDir != null) {
       try {
-        Files.delete(Paths.get(fileStorageDir, id));
+        deleteFromStore(id);
       } catch (NoSuchFileException e) {
         fileFound = false;
       }
@@ -707,6 +707,21 @@ public class ElasticBackend implements AutoCloseable {
       LOG.warn("{} was in Elasticsearch but not in the file store", id);
     }
     return docR.status();
+  }
+
+  public PutResult updateXml(String id, String content) throws IOException {
+    if (id == null) {
+      throw new NullPointerException("id should not be null");
+    }
+    Optional<byte[]> orig = getOriginalBytes(id);
+    if (orig.isPresent() && content.equals(new String(orig.get()))) {
+      return new PutResult(id, 200);
+    }
+    try {
+      delete(id);
+    } catch (NoSuchFileException e) {
+    }
+    return putXml(id, content);
   }
 
   private Path getOriginalPath(String id) {
@@ -850,6 +865,10 @@ public class ElasticBackend implements AutoCloseable {
 
   private boolean noSuchIndex(ElasticsearchStatusException e) {
     return e.status() == RestStatus.NOT_FOUND && e.getMessage().contains("no such index");
+  }
+
+  private static boolean success(int status) {
+    return status >= 200 && status < 300;
   }
 
   /**
