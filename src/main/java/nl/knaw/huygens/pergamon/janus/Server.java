@@ -28,6 +28,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.UriBuilder;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,6 +66,10 @@ public class Server extends Application<Server.Config> {
   private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
   static class Config extends Configuration {
+    @JsonProperty
+    @NotEmpty
+    private String apiUri;
+
     @Valid
     @NotNull
     @JsonProperty
@@ -161,7 +166,7 @@ public class Server extends Application<Server.Config> {
     final String textModUri = config.textModUri;
     final Client jerseyClient = createModelingClient(config, environment);
     environment.jersey().register(new DocSetsResource(backend, new InMemoryDocSetStore(),
-      jerseyClient.target(textModUri)));
+      UriBuilder.fromPath(config.apiUri), jerseyClient.target(textModUri)));
     environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(textModUri)));
     environment.jersey().register(new SearchResource(jerseyClient.target(textModUri)));
     environment.jersey().register(

@@ -48,17 +48,18 @@ import static nl.knaw.huygens.pergamon.janus.DocSetsResource.CoCitationFormat.FO
 public class DocSetsResource {
   static final String PATH = "docsets";
 
-
   private static final Logger LOG = LoggerFactory.getLogger(DocSetsResource.class);
 
   private final ElasticBackend documentStore;
   private final DocSetStore docSetStore;
+  private final UriBuilder apiUri;
   private final WebTarget coCiTarget;
   private final ObjectMapper mapper;
 
-  DocSetsResource(ElasticBackend documentStore, DocSetStore docSetStore, WebTarget coCiTarget) {
+  DocSetsResource(ElasticBackend documentStore, DocSetStore docSetStore, UriBuilder apiUri, WebTarget coCiTarget) {
     this.documentStore = documentStore;
     this.docSetStore = docSetStore;
+    this.apiUri = apiUri.path(PATH).path("{id}");
     this.coCiTarget = coCiTarget;
     this.mapper = new ObjectMapper();
   }
@@ -173,7 +174,7 @@ public class DocSetsResource {
   }
 
   private URI locationOf(DocSet docSet) {
-    return UriBuilder.fromPath(PATH).path("{id}").build(docSet.getId());
+    return apiUri.build(docSet.getId());
   }
 
   @SuppressWarnings("unused")

@@ -1,3 +1,6 @@
+# Base URI of the API, used in Location headers of created objects
+apiUri: http://localhost:8080
+
 elasticsearch:
   # Addresses of hosts to connect to.
   hosts:
