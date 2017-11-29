@@ -81,10 +81,9 @@ public class DocSetsResource {
     final org.elasticsearch.client.Response response = documentStore.search(sanitise(query));
     final Set<String> documentIds = streamHits(response.getEntity()).map(this::extractId).collect(Collectors.toSet());
     final DocSet docSet = docSetStore.createDocSet(documentIds);
-    return Response
-      .created(locationOf(docSet))
-      .header("Access-Control-Expose-Headers", "Location")
-      .build();
+    return Response.created(locationOf(docSet))
+                   .header("Access-Control-Expose-Headers", "Location")
+                   .build();
   }
 
   private String sanitise(String query) throws IOException {
@@ -111,17 +110,18 @@ public class DocSetsResource {
 
   @DELETE
   @Path("{id}")
-  public void deleteDocSet(@PathParam("id") UUID docSetId) {
-    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId));
-    if (!docSetStore.delete(docSet)) {
-      throw new WebApplicationException(String.format("Failed to remove document set: %s", docSet.getId()));
+  public Response deleteDocSet(@PathParam("id") UUID docSetId) {
+    if (docSetStore.delete(findDocSet(docSetId))) {
+      return Response.ok().build();
     }
+
+    throw new WebApplicationException(String.format("Failed to remove document set: %s", docSetId));
   }
 
   @POST
   @Path("{id}/documents")
   public Response addDocument(@PathParam("id") UUID docSetId, Set<String> documentIds) {
-    final DocSet docSet = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId));
+    final DocSet docSet = findDocSet(docSetId);
     final int origCount = docSet.getDocIds().size();
 
     documentIds.stream()
@@ -139,11 +139,12 @@ public class DocSetsResource {
   @Path("{id}/cocitations")
   public Response getCoCitations(@PathParam("id") UUID docSetId,
                                  @QueryParam(FORMAT_PARAM_NAME) @DefaultValue("simple") CoCitationFormat format) {
-    Set<XmlDocument> docs = docSetStore.findDocSet(docSetId).orElseThrow(noSuchDocSet(docSetId)).getDocIds()
-                                       .parallelStream()
-                                       .map(this::fetchAsXmlDocument)
-                                       .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
-                                       .collect(Collectors.toSet());
+    final DocSet docSet = findDocSet(docSetId);
+    final Set<XmlDocument> docs = docSet.getDocIds()
+                                        .parallelStream()
+                                        .map(this::fetchAsXmlDocument)
+                                        .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
+                                        .collect(Collectors.toSet());
 
     LOG.debug("Collected {} document(s) for docSet: {}", docs.size(), docSetId);
 
