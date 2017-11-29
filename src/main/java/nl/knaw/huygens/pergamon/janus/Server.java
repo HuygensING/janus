@@ -68,7 +68,7 @@ public class Server extends Application<Server.Config> {
   static class Config extends Configuration {
     @JsonProperty
     @NotEmpty
-    private String apiUri;
+    String apiUri;
 
     @Valid
     @NotNull

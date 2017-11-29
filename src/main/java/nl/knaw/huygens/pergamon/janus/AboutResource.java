@@ -37,6 +37,12 @@ public class AboutResource {
   public final String startedAt;
 
   @JsonProperty
+  public final String apiUri;
+
+  @JsonProperty
+  public final String textModUri;
+
+  @JsonProperty
   public final Properties buildProperties;
 
   // Endpoint of a dependency that we query to get information to pass on.
@@ -60,7 +66,6 @@ public class AboutResource {
 
   private final Client webClient;
   private final ElasticBackend elasticsearch;
-  private final Server.Config config;
 
   /**
    * @param serviceName     Name of this service (probably Janus).
@@ -75,7 +80,8 @@ public class AboutResource {
     this.serviceName = serviceName;
     this.buildProperties = buildProperties;
     this.webClient = webClient;
-    this.config = config;
+    this.apiUri = config.apiUri;
+    this.textModUri = config.textModUri;
     this.startedAt = Instant.now().toString();
   }
 
@@ -87,7 +93,7 @@ public class AboutResource {
     final Map<String, Dependency> dependencies = new TreeMap<>();
 
     dependencies.put("elasticsearch", elasticsearch::about);
-    dependencies.put("textmod", new SimpleDependency(config.textModUri));
+    dependencies.put("textmod", new SimpleDependency(textModUri));
 
     dependencies.forEach((name, dependency) -> {
       final ObjectNode node = mapper.createObjectNode();
