@@ -7,6 +7,7 @@ import io.swagger.annotations.Api;
 import nl.knaw.huygens.pergamon.janus.docsets.DocSet;
 import nl.knaw.huygens.pergamon.janus.docsets.DocSetStore;
 import org.apache.http.HttpEntity;
+import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,10 +56,13 @@ public class DocSetsResource {
   private final UriBuilder apiUri;
   private final WebTarget coCiTarget;
   private final ObjectMapper mapper;
+  private final Config config;
 
-  DocSetsResource(ElasticBackend documentStore, DocSetStore docSetStore, UriBuilder apiUri, WebTarget coCiTarget) {
+  DocSetsResource(ElasticBackend documentStore, DocSetStore docSetStore, Config config,
+                  UriBuilder apiUri, WebTarget coCiTarget) {
     this.documentStore = documentStore;
     this.docSetStore = docSetStore;
+    this.config = config;
     this.apiUri = apiUri.path(PATH).path("{id}");
     this.coCiTarget = coCiTarget;
     this.mapper = new ObjectMapper();
@@ -137,6 +141,12 @@ public class DocSetsResource {
   }
 
   @GET
+  @Path("config")
+  public Config getConfig() {
+    return config;
+  }
+
+  @GET
   @Path("{id}/cocitations")
   public Response getCoCitations(@PathParam("id") UUID docSetId,
                                  @QueryParam(FORMAT_PARAM_NAME) @DefaultValue("simple") CoCitationFormat format) {
@@ -145,9 +155,11 @@ public class DocSetsResource {
                                         .parallelStream()
                                         .map(this::fetchAsXmlDocument)
                                         .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
+                                        .limit(config.cocitationDocumentLimit)
                                         .collect(Collectors.toSet());
 
-    LOG.debug("Collected {} document(s) for docSet: {}", docs.size(), docSetId);
+    LOG.debug("Collected {} document(s) for docSet: {} (limit: {})", docs.size(), docSetId,
+      config.cocitationDocumentLimit);
 
     return calcCoCitations(docs, format);
   }
@@ -204,4 +216,9 @@ public class DocSetsResource {
     }
   }
 
+  static class Config {
+    @JsonProperty
+    @NotEmpty
+    long cocitationDocumentLimit;
+  }
 }

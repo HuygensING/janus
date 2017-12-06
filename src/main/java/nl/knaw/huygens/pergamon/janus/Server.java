@@ -70,6 +70,10 @@ public class Server extends Application<Server.Config> {
     @NotEmpty
     String apiUri;
 
+    @JsonProperty
+    @NotNull
+    DocSetsResource.Config documentSets;
+
     @Valid
     @NotNull
     @JsonProperty
@@ -166,7 +170,7 @@ public class Server extends Application<Server.Config> {
     final String textModUri = config.textModUri;
     final Client jerseyClient = createModelingClient(config, environment);
     environment.jersey().register(new DocSetsResource(backend, new InMemoryDocSetStore(),
-      UriBuilder.fromPath(config.apiUri), jerseyClient.target(textModUri)));
+      config.documentSets, UriBuilder.fromPath(config.apiUri), jerseyClient.target(textModUri)));
     environment.jersey().register(new DocumentsResource(backend, jerseyClient.target(textModUri)));
     environment.jersey().register(new SearchResource(jerseyClient.target(textModUri)));
     environment.jersey().register(
