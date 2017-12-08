@@ -97,7 +97,7 @@ public class DocSetsResource {
     // Strip things like 'size: 0' and '_source: XXX'
     final Map<String, Object> clean = new HashMap<>();
     clean.put("query", dirty.get("query"));
-    clean.put("size", 10000);
+    clean.put("size", config.initialQueryLimit);
 
     return mapper.writeValueAsString(clean);
   }
@@ -217,8 +217,13 @@ public class DocSetsResource {
   }
 
   static class Config {
+    static final int DEFAULT_INITIAL_QUERY_LIMIT = 500;
+
     @JsonProperty
     @NotEmpty
     long cocitationDocumentLimit;
+
+    @JsonProperty
+    long initialQueryLimit = DEFAULT_INITIAL_QUERY_LIMIT;
   }
 }

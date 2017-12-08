@@ -3,6 +3,7 @@ apiUri: http://localhost:8080
 
 documentSets:
   cocitationDocumentLimit: 84
+  initialQueryLimit: 1000
 
 elasticsearch:
   # Addresses of hosts to connect to.
