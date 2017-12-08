@@ -47,7 +47,6 @@ import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
 import java.io.BufferedWriter;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -65,6 +64,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -75,6 +77,7 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
+import static javax.ws.rs.core.Response.Status.REQUEST_TIMEOUT;
 import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 import static org.apache.commons.text.StringEscapeUtils.escapeJava;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
@@ -169,6 +172,8 @@ public class ElasticBackend implements AutoCloseable {
   private final String fileStorageDir;
 
   private final String esSearchEndpoint;
+
+  private final ReadWriteLock fsLock = new ReentrantReadWriteLock(); // protects filesystem operations
 
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.
@@ -561,7 +566,11 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public PutResult putJSON(String id, String content) throws IOException {
-    store(id, content);
+    try {
+      store(id, content);
+    } catch (TimeoutException e) {
+      return new PutResult(id, REQUEST_TIMEOUT);
+    }
 
     // TODO parse and check if content has body field?
     try {
@@ -586,6 +595,8 @@ public class ElasticBackend implements AutoCloseable {
       store(id, content);
     } catch (FileAlreadyExistsException e) {
       return new PutResult(String.format("%s already exists in file store", id), 409);
+    } catch (TimeoutException e) {
+      return new PutResult(id, REQUEST_TIMEOUT);
     }
     try {
       IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
@@ -609,6 +620,8 @@ public class ElasticBackend implements AutoCloseable {
       store(id, document);
     } catch (FileAlreadyExistsException e) {
       return new PutResult(id, CONFLICT);
+    } catch (TimeoutException e) {
+      return new PutResult(id, REQUEST_TIMEOUT);
     }
     try {
       Document xml = XmlParser.fromString(document);
@@ -713,7 +726,12 @@ public class ElasticBackend implements AutoCloseable {
     if (id == null) {
       throw new NullPointerException("id should not be null");
     }
-    Optional<byte[]> orig = getOriginalBytes(id);
+    Optional<byte[]> orig = null;
+    try {
+      orig = getOriginalBytes(id);
+    } catch (TimeoutException e) {
+      return new PutResult(id, REQUEST_TIMEOUT);
+    }
     if (orig.isPresent() && content.equals(new String(orig.get()))) {
       return new PutResult(id, 200);
     }
@@ -728,17 +746,22 @@ public class ElasticBackend implements AutoCloseable {
     return Paths.get(fileStorageDir, id);
   }
 
-  private void store(String id, String content) throws IOException {
+  private void store(String id, String content) throws IOException, TimeoutException {
     if (fileStorageDir == null) {
       return;
     }
     requireValid(id);
     Path path = getOriginalPath(id);
+
+    writeLock(id);
+
     try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
       out.write(content);
     } catch (Throwable e) {
       Files.delete(path);
       throw e;
+    } finally {
+      writeUnlock(id);
     }
   }
 
@@ -749,18 +772,28 @@ public class ElasticBackend implements AutoCloseable {
     Files.delete(getOriginalPath(id));
   }
 
-  public Optional<byte[]> getOriginalBytes(String id) {
+  public Optional<byte[]> getOriginalBytes(String id) throws TimeoutException {
+    readLock(id);
+
     try {
       return Optional.of(Files.readAllBytes(getOriginalPath(id)));
     } catch (IOException e) {
       LOG.warn("Failed to get original {}: {}", id, e.getMessage());
       return Optional.empty();
+    } finally {
+      readUnlock(id);
     }
   }
 
-  public InputStream getOriginal(String id) throws IOException {
+  public String getOriginal(String id) throws IOException, TimeoutException {
     Path path = getOriginalPath(id);
-    return new FileInputStream(path.toFile());
+    readLock(id);
+
+    try {
+      return new String(Files.readAllBytes(path));
+    } finally {
+      readUnlock(id);
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -838,6 +871,28 @@ public class ElasticBackend implements AutoCloseable {
     if (!Pattern.matches("[a-z0-9_-]+", field)) {
       throw new RuntimeException("invalid field name '" + field + "'");
     }
+  }
+
+  // TODO: we need more fine-grained locks.
+
+  private void readLock(String id) throws TimeoutException {
+    if (!fsLock.readLock().tryLock()) {
+      throw new TimeoutException("could not get lock for " + id);
+    }
+  }
+
+  private void writeLock(String id) throws TimeoutException {
+    if (!fsLock.writeLock().tryLock()) {
+      throw new TimeoutException("could not get lock for " + id);
+    }
+  }
+
+  private void readUnlock(String id) {
+    fsLock.readLock().unlock();
+  }
+
+  private void writeUnlock(String id) {
+    fsLock.writeLock().unlock();
   }
 
   private PutResult errorResult(Throwable e) {

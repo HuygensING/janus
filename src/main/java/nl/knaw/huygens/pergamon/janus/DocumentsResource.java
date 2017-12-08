@@ -26,8 +26,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.REQUEST_TIMEOUT;
 
 @Api(DocumentsResource.PATH)
 @Path(DocumentsResource.PATH)
@@ -184,6 +186,8 @@ public class DocumentsResource {
   public Response getOriginal(@PathParam("id") @NotEmpty String id) throws IOException {
     try {
       return Response.ok().entity(backend.getOriginal(id)).build();
+    } catch (TimeoutException e) {
+      return Response.status(REQUEST_TIMEOUT).entity(e.getMessage()).build();
     } catch (Throwable e) {
       return Response.serverError().entity(e.getMessage()).build();
     }
