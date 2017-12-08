@@ -354,13 +354,14 @@ public class ElasticBackend implements AutoCloseable {
   /**
    * Find the document with the given id.
    */
-  public Optional<String> findDocument(String id) {
+  public Optional<Map<String, Object>> findDocument(String id) {
     try {
       final GetResponse response = get(documentIndex, documentType, id);
       if (response.isSourceEmpty()) {
         return Optional.empty();
       }
-      return Optional.of((String) response.getSourceAsMap().get("body"));
+      //return Optional.of((String) response.getSourceAsMap().get("body"));
+      return Optional.of(response.getSourceAsMap());
     } catch (ElasticsearchStatusException e) {
       if (noSuchIndex(e)) {
         return Optional.empty();
@@ -381,7 +382,7 @@ public class ElasticBackend implements AutoCloseable {
                            .orElse(null);
   }
 
-  private DocAndAnnotations addAnnotations(String id, String body, boolean recursive) {
+  private DocAndAnnotations addAnnotations(String id, Map<String, Object> body, boolean recursive) {
     final List<Annotation> annotations = getAnnotations(id, null, recursive, true, new ArrayList<>());
     return new DocAndAnnotations(id, body, annotations);
   }

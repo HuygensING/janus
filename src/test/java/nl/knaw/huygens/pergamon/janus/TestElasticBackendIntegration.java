@@ -129,6 +129,7 @@ public class TestElasticBackendIntegration {
     DocAndAnnotations doc = retry(() -> {
       DocAndAnnotations d = backend.getWithAnnotations(result.id, true);
       assertEquals("tester says hello,  world!", d.text);
+      assertEquals(d.text, d.body.get("body"));
       assertEquals(3, d.annotations.size());
       return d;
     });

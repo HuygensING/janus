@@ -85,6 +85,7 @@ public class DocumentsResource {
   @Path("{id}/keywords")
   public Response get(@ApiParam(DOCUMENT_ID) @PathParam("id") String id) {
     return backend.findDocument(id)
+                  .map(x -> (String) x.get("body"))
                   .map(this::toXML)
                   .map(this::extractKeywords)
                   .orElse(Response.status(NOT_FOUND).build());
