@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -150,24 +151,37 @@ public class DocSetsResource {
   @Path("{id}/cocitations")
   public Response getCoCitations(@PathParam("id") UUID docSetId,
                                  @QueryParam(FORMAT_PARAM_NAME) @DefaultValue("simple") CoCitationFormat format) {
-    final DocSet docSet = findDocSet(docSetId);
-    final Set<XmlDocument> docs = docSet.getDocIds()
-                                        .parallelStream()
-                                        .map(this::fetchAsXmlDocument)
-                                        .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
-                                        .limit(config.cocitationDocumentLimit)
-                                        .collect(Collectors.toSet());
+    try {
+      final DocSet docSet = findDocSet(docSetId);
+      final Set<XmlDocument> docs = docSet.getDocIds()
+                                          .parallelStream()
+                                          .map(this::fetchAsXmlDocument)
+                                          .filter(Optional::isPresent).map(Optional::get) // Optional::stream in Java 9
+                                          .limit(config.cocitationDocumentLimit)
+                                          .collect(Collectors.toSet());
 
-    LOG.debug("Collected {} document(s) for docSet: {} (limit: {})", docs.size(), docSetId,
-      config.cocitationDocumentLimit);
+      LOG.debug("Collected {} document(s) for docSet: {} (limit: {})", docs.size(), docSetId,
+        config.cocitationDocumentLimit);
 
-    return calcCoCitations(docs, format);
+      return calcCoCitations(docs, format);
+    } catch (RuntimeException e) {
+      Throwable cause = e.getCause();
+      if (cause != null && cause instanceof TimeoutException) {
+        return Response.status(Response.Status.REQUEST_TIMEOUT).build();
+      } else {
+        throw e;
+      }
+    }
   }
 
   private Optional<XmlDocument> fetchAsXmlDocument(String id) {
-    return documentStore.getOriginalBytes(id)
-                        .map(String::new)
-                        .map(xml -> new XmlDocument(id, xml));
+    try {
+      return documentStore.getOriginalBytes(id)
+                          .map(String::new)
+                          .map(xml -> new XmlDocument(id, xml));
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private Response calcCoCitations(Set<XmlDocument> docs, CoCitationFormat format) {
