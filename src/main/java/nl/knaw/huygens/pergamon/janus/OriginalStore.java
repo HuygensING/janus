@@ -5,9 +5,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -19,6 +22,10 @@ import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 
 /**
  * Storage of (XML) originals.
+ * <p>
+ * XML files are stored in a hierarchy of directories. The path to each file is
+ * $dir/$hash0/$hash1/$id, where $hash0 and $hash1 are the first two bytes of id's
+ * SHA-256, in lowercase hexadecimal (two characters each).
  */
 public class OriginalStore {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticBackend.class);
@@ -78,18 +85,49 @@ public class OriginalStore {
 
     lockW(id);
 
-    try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
-      out.write(content);
-    } catch (Throwable e) {
-      Files.delete(path);
-      throw e;
+    try {
+      mkdir(path.getParent().getParent());
+      mkdir(path.getParent());
+      try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
+        out.write(content);
+      } catch (Throwable e) {
+        Files.delete(path);
+        throw e;
+      }
     } finally {
       unlockW(id);
     }
   }
 
-  private Path getPath(String id) {
-    return dir.resolve(id);
+  void mkdir(Path dir) throws IOException {
+    try {
+      Files.createDirectory(dir);
+    } catch (FileAlreadyExistsException e) {
+      // No problem
+    }
+  }
+
+  Path getPath(String id) {
+    String h = String.format("%04x", hash(id));
+    return dir
+      //.resolve(String.format("%04x", hash(id)))
+      .resolve(h.substring(0, 2))
+      .resolve(h.substring(2, 4))
+      .resolve(id);
+  }
+
+  // First two bytes of SHA-256 of id.
+  static int hash(String id) {
+    try {
+      MessageDigest sha = MessageDigest.getInstance("SHA-256");
+      sha.update(id.getBytes("UTF-8"));
+      byte[] h = sha.digest();
+      int h0 = (int) h[0] & 0xFF;
+      int h1 = (int) h[1] & 0xFF;
+      return (h0 << 8) | h1;
+    } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // TODO: we need more fine-grained locks.

@@ -13,12 +13,13 @@ import org.junit.Test;
 
 import javax.ws.rs.core.Response;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.ConnectException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -63,14 +64,10 @@ public class TestElasticBackendIntegration {
       backend.removeIndices();
     }
     backend.close();
-    Files.list(tempDir).forEach(p -> {
-      try {
-        Files.delete(p);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    });
-    Files.delete(tempDir);
+    Files.walk(tempDir)
+         .sorted(Comparator.reverseOrder()) // parents first
+         .map(Path::toFile)
+         .forEach(File::delete);
   }
 
   @Test
@@ -83,7 +80,7 @@ public class TestElasticBackendIntegration {
   public void noIndexYet() throws IOException {
     Path tmp = null;
     try {
-      tmp = Files.createTempDirectory("TestElasticBackendIntegration");
+      tmp = Files.createTempDirectory("janus-TestElasticBackendIntegration");
       ElasticBackend newBackend = new ElasticBackend(Collections.emptyList(),
         "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE, null, tmp);
 
@@ -91,9 +88,10 @@ public class TestElasticBackendIntegration {
       assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));
       assertEquals(ElasticBackend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
     } finally {
-      if (tmp != null) {
-        Files.delete(tmp);
-      }
+      Files.walk(tmp)
+           .sorted(Comparator.reverseOrder()) // parents first
+           .map(Path::toFile)
+           .forEach(File::delete);
     }
   }
 
@@ -267,7 +265,7 @@ public class TestElasticBackendIntegration {
   public void xmlNullId() throws Exception {
     String xml = "<hello>world</hello>";
     String id = putXml(xml);
-    String stored = new String(Files.readAllBytes(tempDir.resolve(id)));
+    String stored = backend.getOriginal(id);
     assertEquals(xml, stored);
   }
 
