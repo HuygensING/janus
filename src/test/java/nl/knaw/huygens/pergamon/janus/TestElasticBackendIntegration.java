@@ -172,7 +172,7 @@ public class TestElasticBackendIntegration {
 
     Annotation ann1 = new Annotation(0, 21, docId, "level1", null, "test", null);
     ElasticBackend.PutResult result = backend.putAnnotation(ann1);
-    assertEquals(result.status, 201);
+    assertEquals(201, result.status);
     assertNotNull(result.id);
     ann1.id = result.id;
 
@@ -192,7 +192,7 @@ public class TestElasticBackendIntegration {
 
     Annotation ann = new Annotation(0, 4, docId, "note", null, "test", null);
     ElasticBackend.PutResult result = backend.putAnnotation(ann);
-    assertEquals(result.status, 201);
+    assertEquals(201, result.status);
     String annid = result.id;
     assertNotNull(annid);
 

@@ -8,30 +8,35 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 
 /**
  * Storage of (XML) originals.
  * <p>
  * XML files are stored in a hierarchy of directories. The path to each file is
- * $dir/$hash0/$hash1/$id, where $hash0 and $hash1 are the first two bytes of id's
+ * $dir/$hash0/$hash1/$id, where $hash0 and $hash1 are the first two bytes of $id's
  * SHA-256, in lowercase hexadecimal (two characters each).
+ * <p>
+ * Clients should obtain Writers to update files in the hierarchy.
+ * These (when used in try-with-resources blocks) ensure that parts of the
+ * hierarchy are properly locked.
  */
 public class OriginalStore {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticBackend.class);
 
   private final Path dir;
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  // one lock per $hash0/$hash1
+  private final ReadWriteLock locks[] = new ReentrantReadWriteLock[256 * 256];
   private final long timeout;
 
   /**
@@ -46,60 +51,133 @@ public class OriginalStore {
     }
     this.dir = dir;
     this.timeout = timeout;
-  }
 
-  public void delete(String id) throws IOException {
-    Files.delete(getPath(id));
-  }
-
-  // TODO we should have only one of get, getBytes.
-  // Responsibilities should be better separated.
-
-  public String get(String id) throws IOException, TimeoutException {
-    Path path = getPath(id);
-    lockR(id);
-
-    try {
-      return new String(Files.readAllBytes(path));
-    } finally {
-      unlockR(id);
+    for (int i = 0; i < locks.length; i++) {
+      locks[i] = new ReentrantReadWriteLock();
     }
   }
 
-  public Optional<byte[]> getBytes(String id) throws TimeoutException {
-    lockR(id);
-
-    try {
-      return Optional.of(Files.readAllBytes(getPath(id)));
-    } catch (IOException e) {
-      LOG.warn("Failed to get original {}: {}", id, e.getMessage());
-      return Optional.empty();
-    } finally {
-      unlockR(id);
+  public byte[] get(String id) throws IOException, TimeoutException {
+    try (LockedReader rd = new LockedReader(id)) {
+      return rd.get();
     }
   }
 
-  public void put(String id, String content) throws IOException, TimeoutException {
-    requireValid(id);
-    Path path = getPath(id);
+  // Base class of LockedReader and Writer.
+  private class BaseReader {
+    final int hash;
+    final String id;
+    final Path path;
 
-    lockW(id);
+    private BaseReader(String id, int hash) {
+      requireValid(id);
 
-    try {
-      mkdir(path.getParent().getParent());
-      mkdir(path.getParent());
-      try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
+      this.hash = hash;
+      this.id = id;
+      path = getPath(id, hash);
+    }
+
+    byte[] get() throws IOException, TimeoutException {
+      return Files.readAllBytes(path);
+    }
+  }
+
+  private class LockedReader extends BaseReader implements AutoCloseable {
+    private LockedReader(String id) throws TimeoutException {
+      super(id, hash(id));
+
+      try {
+        if (locks[hash].readLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+          return;
+        }
+      } catch (InterruptedException e) {
+        // Proceed and return TimeoutException.
+      }
+      throw new TimeoutException("could not get lock for " + getParent(hash));
+    }
+
+    @Override
+    public void close() {
+      locks[hash].readLock().unlock();
+    }
+  }
+
+  /**
+   * A Writer is used to write to/delete the original contents of a specific id.
+   */
+  public class Writer extends BaseReader implements AutoCloseable {
+    private final boolean overwrite;
+    private Path tmp = null;
+
+    private Writer(String id, boolean overwrite) throws FileAlreadyExistsException, TimeoutException {
+      super(id, hash(id));
+      this.overwrite = overwrite;
+
+      try {
+        if (locks[hash].writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+          return;
+        }
+      } catch (InterruptedException e) {
+        // Proceed and return TimeoutException.
+      }
+      throw new TimeoutException("could not get lock for " + getParent(hash));
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (tmp != null) {
+        Files.move(tmp, path, REPLACE_EXISTING);
+      }
+      locks[hash].writeLock().unlock();
+    }
+
+    public void delete() throws IOException {
+      Files.delete(getPath(id, hash));
+    }
+
+    public byte[] getIfExists() throws IOException, TimeoutException {
+      try {
+        return get();
+      } catch (NoSuchFileException e) {
+        return null;
+      }
+    }
+
+    public void put(String content) throws IOException, TimeoutException {
+      if (!overwrite && Files.exists(path)) {
+        throw new FileAlreadyExistsException(path.toString());
+      }
+      Path dir = getParent(hash);
+      mkdir(dir.getParent());
+      mkdir(dir);
+      tmp = Files.createTempFile(dir, ".tmp_", "");
+
+      try (BufferedWriter out = Files.newBufferedWriter(tmp)) {
         out.write(content);
       } catch (Throwable e) {
-        Files.delete(path);
+        Files.delete(tmp);
+        tmp = null;
         throw e;
       }
-    } finally {
-      unlockW(id);
     }
   }
 
-  void mkdir(Path dir) throws IOException {
+  /**
+   * Equivalent to writer(id, false).
+   */
+  public Writer writer(String id) throws TimeoutException {
+    try {
+      return writer(id, false);
+    } catch (FileAlreadyExistsException e) {
+      throw new RuntimeException(e); // can't happen
+    }
+  }
+
+  public Writer writer(String id, boolean overwrite) throws FileAlreadyExistsException, TimeoutException {
+    return new Writer(id, overwrite);
+  }
+
+  private void mkdir(Path dir) throws IOException {
     try {
       Files.createDirectory(dir);
     } catch (FileAlreadyExistsException e) {
@@ -107,13 +185,12 @@ public class OriginalStore {
     }
   }
 
-  Path getPath(String id) {
-    String h = String.format("%04x", hash(id));
-    return dir
-      //.resolve(String.format("%04x", hash(id)))
-      .resolve(h.substring(0, 2))
-      .resolve(h.substring(2, 4))
-      .resolve(id);
+  private Path getParent(int h) {
+    return dir.resolve(String.format("%02x/%02x", (h & 0xFF00) >>> 8, h & 0xFF));
+  }
+
+  Path getPath(String id, int h) {
+    return getParent(h).resolve(id);
   }
 
   // First two bytes of SHA-256 of id.
@@ -128,37 +205,5 @@ public class OriginalStore {
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  // TODO: we need more fine-grained locks.
-
-  private void lockR(String id) throws TimeoutException {
-    try {
-      if (lock.readLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
-        return;
-      }
-    } catch (InterruptedException e) {
-      // Proceed and return TimeoutException.
-    }
-    throw new TimeoutException("could not get lock for " + id);
-  }
-
-  private void lockW(String id) throws TimeoutException {
-    try {
-      if (lock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
-        return;
-      }
-    } catch (InterruptedException e) {
-      // Proceed and return TimeoutException.
-    }
-    throw new TimeoutException("could not get lock for " + id);
-  }
-
-  private void unlockR(String id) {
-    lock.readLock().unlock();
-  }
-
-  private void unlockW(String id) {
-    lock.writeLock().unlock();
   }
 }

@@ -558,21 +558,21 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public PutResult putJSON(String id, String content) throws IOException {
-    try {
-      origStore.put(id, content);
+    try (OriginalStore.Writer wr = origStore.writer(id)) {
+      wr.put(content);
+
+      // TODO parse and check if content has body field?
+      try {
+        IndexResponse response =
+          hiClient.index(indexRequest(documentIndex).type(documentType).id(id).source(content, JSON));
+        return makePutResult(response);
+      } catch (ElasticsearchException e) {
+        return new PutResult(id, e.status().getStatus(), e.toString());
+      } catch (Throwable e) {
+        return errorResult(e);
+      }
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
-    }
-
-    // TODO parse and check if content has body field?
-    try {
-      IndexResponse response =
-        hiClient.index(indexRequest(documentIndex).type(documentType).id(id).source(content, JSON));
-      return makePutResult(response);
-    } catch (ElasticsearchException e) {
-      return new PutResult(id, e.status().getStatus(), e.toString());
-    } catch (Throwable e) {
-      return errorResult(e);
     }
   }
 
@@ -583,21 +583,22 @@ public class ElasticBackend implements AutoCloseable {
       // ActionRequestValidationException: an id must be provided if version type or value are set
       id = UUID.randomUUID().toString();
     }
-    try {
-      origStore.put(id, content);
+    try (OriginalStore.Writer wr = origStore.writer(id)) {
+      wr.put(content);
+
+      try {
+        IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
+                                                      .source(jsonBuilder().startObject()
+                                                                           .field("body", content)
+                                                                           .endObject());
+        return makePutResult(hiClient.index(req));
+      } catch (ElasticsearchStatusException e) {
+        return new PutResult(e.toString(), e.status().getStatus());
+      }
     } catch (FileAlreadyExistsException e) {
       return new PutResult(String.format("%s already exists in file store", id), 409);
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
-    }
-    try {
-      IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
-                                                    .source(jsonBuilder().startObject()
-                                                                         .field("body", content)
-                                                                         .endObject());
-      return makePutResult(hiClient.index(req));
-    } catch (ElasticsearchStatusException e) {
-      return new PutResult(e.toString(), e.status().getStatus());
     }
   }
 
@@ -608,14 +609,9 @@ public class ElasticBackend implements AutoCloseable {
     if (id == null) {
       id = UUID.randomUUID().toString();
     }
-    try {
-      origStore.put(id, document);
-    } catch (FileAlreadyExistsException e) {
-      return new PutResult(id, CONFLICT);
-    } catch (TimeoutException e) {
-      return new PutResult(id, REQUEST_TIMEOUT);
-    }
-    try {
+    try (OriginalStore.Writer wr = origStore.writer(id)) {
+      wr.put(document);
+
       Document xml = XmlParser.fromString(document);
       Triple<String, Element, Map<String, String>> fields = mapping.apply(xml);
 
@@ -623,8 +619,11 @@ public class ElasticBackend implements AutoCloseable {
       TaggedCodepoints body = new TaggedCodepoints(fields.getMiddle(), id);
 
       return putXml(fields.getLeft(), body, fields.getRight());
+    } catch (FileAlreadyExistsException e) {
+      return new PutResult(id, CONFLICT);
+    } catch (TimeoutException e) {
+      return new PutResult(id, REQUEST_TIMEOUT);
     } catch (Throwable e) {
-      origStore.delete(id);
       return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
@@ -687,10 +686,19 @@ public class ElasticBackend implements AutoCloseable {
    * Deletes a document and all annotations pointing to it (directly or indirectly).
    */
   public RestStatus delete(String id) throws IOException {
+    try (OriginalStore.Writer wr = origStore.writer(id)) {
+      return delete(wr, id);
+    } catch (TimeoutException e) {
+      return RestStatus.REQUEST_TIMEOUT;
+    }
+  }
+
+  private RestStatus delete(OriginalStore.Writer wr, String id) throws IOException {
     boolean fileFound = true;
     try {
-      origStore.delete(id);
+      wr.delete();
     } catch (NoSuchFileException e) {
+      // Even if the original was not present, try to delete its parts from Elasticsearch.
       fileFound = false;
     }
 
@@ -716,28 +724,20 @@ public class ElasticBackend implements AutoCloseable {
     if (id == null) {
       throw new NullPointerException("id should not be null");
     }
-    Optional<byte[]> orig = null;
-    try {
-      orig = origStore.getBytes(id);
+    try (OriginalStore.Writer wr = origStore.writer(id, true)) {
+      byte[] orig = wr.getIfExists();
+      if (orig != null && content.equals(new String(orig))) {
+        return new PutResult(id, 200);
+      }
+      delete(wr, id);
+      return putXml(id, content);
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
     }
-    if (orig.isPresent() && content.equals(new String(orig.get()))) {
-      return new PutResult(id, 200);
-    }
-    try {
-      delete(id);
-    } catch (NoSuchFileException e) {
-    }
-    return putXml(id, content);
-  }
-
-  public Optional<byte[]> getOriginalBytes(String id) throws TimeoutException {
-    return origStore.getBytes(id);
   }
 
   public String getOriginal(String id) throws IOException, TimeoutException {
-    return origStore.get(id);
+    return new String(origStore.get(id));
   }
 
   @SuppressWarnings("unchecked")

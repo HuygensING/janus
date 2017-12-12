@@ -176,9 +176,10 @@ public class DocSetsResource {
 
   private Optional<XmlDocument> fetchAsXmlDocument(String id) {
     try {
-      return documentStore.getOriginalBytes(id)
-                          .map(String::new)
-                          .map(xml -> new XmlDocument(id, xml));
+      return Optional.of(new XmlDocument(id, documentStore.getOriginal(id)));
+    } catch (IOException e) {
+      LOG.warn("Failed to get original {}: {}", id, e.getMessage());
+      return Optional.empty();
     } catch (TimeoutException e) {
       throw new RuntimeException(e);
     }
