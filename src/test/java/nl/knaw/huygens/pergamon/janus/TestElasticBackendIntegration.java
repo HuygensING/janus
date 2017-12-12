@@ -43,14 +43,13 @@ public class TestElasticBackendIntegration {
   @BeforeClass
   public static void connect() throws IOException {
     try {
-      tempDir = Files.createTempDirectory(null);
+      tempDir = Files.createTempDirectory("TestElasticBackendIntegration");
       Mapping mapping = new Mapping(asList(
         new Mapping.Field("body", "text", "/"),
         new Mapping.Field("author", "keyword", "//author"),
         new Mapping.Field("receiver", "keyword", "//receiver")
       ), false);
-      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE, mapping,
-        tempDir.toString());
+      backend = new ElasticBackend(Collections.emptyList(), DOC_INDEX, DOC_TYPE, ANN_INDEX, ANN_TYPE, mapping, tempDir);
       backend.initIndices();
     } catch (ConnectException e) {
       available = false;
@@ -82,12 +81,20 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void noIndexYet() throws IOException {
-    ElasticBackend newBackend = new ElasticBackend(Collections.emptyList(),
-      "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE, null, null);
+    Path tmp = null;
+    try {
+      tmp = Files.createTempDirectory("TestElasticBackendIntegration");
+      ElasticBackend newBackend = new ElasticBackend(Collections.emptyList(),
+        "surely-nonexistent-doc-index", "surely-nonexistent-doc-type", ANN_INDEX, ANN_TYPE, null, tmp);
 
-    // These shouldn't raise IndexNotFoundException.
-    assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));
-    assertEquals(ElasticBackend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
+      // These shouldn't raise IndexNotFoundException.
+      assertEquals(null, newBackend.getWithAnnotations("nothing-here", false));
+      assertEquals(ElasticBackend.ListPage.empty(), newBackend.listDocs("query", 0, 1));
+    } finally {
+      if (tmp != null) {
+        Files.delete(tmp);
+      }
+    }
   }
 
   @Test

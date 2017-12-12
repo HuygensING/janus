@@ -46,16 +46,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,12 +62,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.util.Collections.EMPTY_MAP;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -78,7 +72,6 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.REQUEST_TIMEOUT;
-import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 import static org.apache.commons.text.StringEscapeUtils.escapeJava;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.elasticsearch.client.Requests.bulkRequest;
@@ -169,11 +162,9 @@ public class ElasticBackend implements AutoCloseable {
   private final String documentIndex;
   private final String documentType;
 
-  private final String fileStorageDir;
-
   private final String esSearchEndpoint;
 
-  private final ReadWriteLock fsLock = new ReentrantReadWriteLock(); // protects filesystem operations
+  private final OriginalStore origStore;
 
   /**
    * Construct Backend instance with a list of backing Elasticsearch connections.
@@ -185,15 +176,15 @@ public class ElasticBackend implements AutoCloseable {
    * @throws UnknownHostException
    */
   public ElasticBackend(List<String> hosts, String documentIndex, String documentType, Mapping mapping,
-                        String storageDir)
-    throws UnknownHostException {
+                        Path storageDir)
+    throws IOException {
     this(hosts, documentIndex, documentType, ANNOTATION_INDEX, ANNOTATION_TYPE, mapping, storageDir);
   }
 
   // Arguments annotation{Index,Type} are for test purposes only.
   ElasticBackend(List<String> hosts, String documentIndex, String documentType,
-                 String annotationIndex, String annotationType, Mapping mapping, String storageDir)
-    throws UnknownHostException {
+                 String annotationIndex, String annotationType, Mapping mapping, Path storageDir)
+    throws IOException {
     if (Objects.equals(documentIndex, annotationIndex) || Objects.equals(annotationType, documentType)) {
       throw new IllegalArgumentException("documents shouldn't be stored in the annotation index");
     }
@@ -207,7 +198,7 @@ public class ElasticBackend implements AutoCloseable {
     this.documentIndex = documentIndex;
     this.documentType = documentType;
     this.mapping = mapping;
-    this.fileStorageDir = storageDir;
+    this.origStore = new OriginalStore(storageDir);
 
     loClient = RestClient.builder(hosts.stream()
                                        .map(ElasticBackend::parseAddr)
@@ -568,7 +559,7 @@ public class ElasticBackend implements AutoCloseable {
 
   public PutResult putJSON(String id, String content) throws IOException {
     try {
-      store(id, content);
+      origStore.put(id, content);
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
     }
@@ -593,7 +584,7 @@ public class ElasticBackend implements AutoCloseable {
       id = UUID.randomUUID().toString();
     }
     try {
-      store(id, content);
+      origStore.put(id, content);
     } catch (FileAlreadyExistsException e) {
       return new PutResult(String.format("%s already exists in file store", id), 409);
     } catch (TimeoutException e) {
@@ -618,7 +609,7 @@ public class ElasticBackend implements AutoCloseable {
       id = UUID.randomUUID().toString();
     }
     try {
-      store(id, document);
+      origStore.put(id, document);
     } catch (FileAlreadyExistsException e) {
       return new PutResult(id, CONFLICT);
     } catch (TimeoutException e) {
@@ -633,7 +624,7 @@ public class ElasticBackend implements AutoCloseable {
 
       return putXml(fields.getLeft(), body, fields.getRight());
     } catch (Throwable e) {
-      deleteFromStore(id);
+      origStore.delete(id);
       return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
@@ -697,12 +688,10 @@ public class ElasticBackend implements AutoCloseable {
    */
   public RestStatus delete(String id) throws IOException {
     boolean fileFound = true;
-    if (fileStorageDir != null) {
-      try {
-        deleteFromStore(id);
-      } catch (NoSuchFileException e) {
-        fileFound = false;
-      }
+    try {
+      origStore.delete(id);
+    } catch (NoSuchFileException e) {
+      fileFound = false;
     }
 
     org.elasticsearch.client.Response annR =
@@ -729,7 +718,7 @@ public class ElasticBackend implements AutoCloseable {
     }
     Optional<byte[]> orig = null;
     try {
-      orig = getOriginalBytes(id);
+      orig = origStore.getBytes(id);
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
     }
@@ -743,61 +732,16 @@ public class ElasticBackend implements AutoCloseable {
     return putXml(id, content);
   }
 
-  private Path getOriginalPath(String id) {
-    return Paths.get(fileStorageDir, id);
-  }
-
-  private void store(String id, String content) throws IOException, TimeoutException {
-    if (fileStorageDir == null) {
-      return;
-    }
-    requireValid(id);
-    Path path = getOriginalPath(id);
-
-    writeLock(id);
-
-    try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
-      out.write(content);
-    } catch (Throwable e) {
-      Files.delete(path);
-      throw e;
-    } finally {
-      writeUnlock(id);
-    }
-  }
-
-  private void deleteFromStore(String id) throws IOException {
-    if (fileStorageDir == null) {
-      return;
-    }
-    Files.delete(getOriginalPath(id));
-  }
-
   public Optional<byte[]> getOriginalBytes(String id) throws TimeoutException {
-    readLock(id);
-
-    try {
-      return Optional.of(Files.readAllBytes(getOriginalPath(id)));
-    } catch (IOException e) {
-      LOG.warn("Failed to get original {}: {}", id, e.getMessage());
-      return Optional.empty();
-    } finally {
-      readUnlock(id);
-    }
+    return origStore.getBytes(id);
   }
 
   public String getOriginal(String id) throws IOException, TimeoutException {
-    Path path = getOriginalPath(id);
-    readLock(id);
-
-    try {
-      return new String(Files.readAllBytes(path));
-    } finally {
-      readUnlock(id);
-    }
+    return origStore.get(id);
   }
 
   @SuppressWarnings("unchecked")
+
   private static void copyAttributes(Map<String, Object> map, Annotation ann) {
     ((Map<String, String>) map.getOrDefault("attrib", EMPTY_MAP)).forEach(ann.attributes::put);
   }
@@ -872,28 +816,6 @@ public class ElasticBackend implements AutoCloseable {
     if (!Pattern.matches("[a-z0-9_-]+", field)) {
       throw new RuntimeException("invalid field name '" + field + "'");
     }
-  }
-
-  // TODO: we need more fine-grained locks.
-
-  private void readLock(String id) throws TimeoutException {
-    if (!fsLock.readLock().tryLock()) {
-      throw new TimeoutException("could not get lock for " + id);
-    }
-  }
-
-  private void writeLock(String id) throws TimeoutException {
-    if (!fsLock.writeLock().tryLock()) {
-      throw new TimeoutException("could not get lock for " + id);
-    }
-  }
-
-  private void readUnlock(String id) {
-    fsLock.readLock().unlock();
-  }
-
-  private void writeUnlock(String id) {
-    fsLock.writeLock().unlock();
   }
 
   private PutResult errorResult(Throwable e) {

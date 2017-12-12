@@ -32,6 +32,7 @@ import javax.ws.rs.core.UriBuilder;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -218,7 +219,7 @@ public class Server extends Application<Server.Config> {
 
     final ElasticBackend backend =
       new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType, mapping,
-        config.storage.directory);
+        Paths.get(config.storage.directory));
     backend.initIndices();
     return backend;
   }
