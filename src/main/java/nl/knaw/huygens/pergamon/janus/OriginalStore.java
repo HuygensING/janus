@@ -9,6 +9,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -24,13 +25,20 @@ public class OriginalStore {
 
   private final Path dir;
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final long timeout;
 
-  public OriginalStore(Path dir) throws IOException {
+  /**
+   * @param dir     Top-level directory.
+   * @param timeout Timeout, in milliseconds.
+   * @throws IOException
+   */
+  public OriginalStore(Path dir, long timeout) throws IOException {
     try {
       Files.createDirectory(dir);
     } catch (FileAlreadyExistsException e) {
     }
     this.dir = dir;
+    this.timeout = timeout;
   }
 
   public void delete(String id) throws IOException {
@@ -87,15 +95,25 @@ public class OriginalStore {
   // TODO: we need more fine-grained locks.
 
   private void lockR(String id) throws TimeoutException {
-    if (!lock.readLock().tryLock()) {
-      throw new TimeoutException("could not get lock for " + id);
+    try {
+      if (lock.readLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+        return;
+      }
+    } catch (InterruptedException e) {
+      // Proceed and return TimeoutException.
     }
+    throw new TimeoutException("could not get lock for " + id);
   }
 
   private void lockW(String id) throws TimeoutException {
-    if (!lock.writeLock().tryLock()) {
-      throw new TimeoutException("could not get lock for " + id);
+    try {
+      if (lock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+        return;
+      }
+    } catch (InterruptedException e) {
+      // Proceed and return TimeoutException.
     }
+    throw new TimeoutException("could not get lock for " + id);
   }
 
   private void unlockR(String id) {

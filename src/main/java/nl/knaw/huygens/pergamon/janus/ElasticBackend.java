@@ -198,7 +198,7 @@ public class ElasticBackend implements AutoCloseable {
     this.documentIndex = documentIndex;
     this.documentType = documentType;
     this.mapping = mapping;
-    this.origStore = new OriginalStore(storageDir);
+    this.origStore = new OriginalStore(storageDir, 200); // TODO make configurable
 
     loClient = RestClient.builder(hosts.stream()
                                        .map(ElasticBackend::parseAddr)
