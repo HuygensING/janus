@@ -64,6 +64,22 @@ public class OriginalStore {
     }
   }
 
+  public void put(String id, String content) throws IOException, TimeoutException {
+    requireValid(id);
+    Path path = getPath(id);
+
+    lockW(id);
+
+    try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
+      out.write(content);
+    } catch (Throwable e) {
+      Files.delete(path);
+      throw e;
+    } finally {
+      unlockW(id);
+    }
+  }
+
   private Path getPath(String id) {
     return dir.resolve(id);
   }
@@ -88,21 +104,5 @@ public class OriginalStore {
 
   private void unlockW(String id) {
     lock.writeLock().unlock();
-  }
-
-  public void put(String id, String content) throws IOException, TimeoutException {
-    requireValid(id);
-    Path path = getPath(id);
-
-    lockW(id);
-
-    try (BufferedWriter out = Files.newBufferedWriter(path, CREATE_NEW)) {
-      out.write(content);
-    } catch (Throwable e) {
-      Files.delete(path);
-      throw e;
-    } finally {
-      unlockW(id);
-    }
   }
 }
