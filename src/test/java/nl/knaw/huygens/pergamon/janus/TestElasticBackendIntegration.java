@@ -197,7 +197,7 @@ public class TestElasticBackendIntegration {
     assertNotNull(annid);
 
     result = backend.putTxt(null, "body of note");
-    assertEquals(result.status, 201);
+    assertEquals(201, result.status);
     assertNotNull(result.id);
     String bodyid = result.id;
     Response response = backend.addBody(annid, bodyid);
