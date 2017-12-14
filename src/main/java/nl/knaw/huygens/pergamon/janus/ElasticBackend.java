@@ -270,9 +270,7 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public void registerHealthChecks(HealthCheckRegistry registry) {
-    // These need to be rewritten to use the Elasticsearch REST client.
     registry.register("ES cluster health", new EsClusterHealthCheck(false));
-    // registry.register("ES index docs health", new EsIndexDocsHealthCheck(client, documentIndex));
     registry.register("ES index exists health", new EsIndexExistsHealthCheck());
   }
 
