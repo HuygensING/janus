@@ -1,7 +1,7 @@
 Janus
 =====
 
-Janus stores documents and annotations on them in Elasticsearch.
+Janus stores XML documents and annotations on them in Elasticsearch.
 
 |stars| |pulls| |autom| |build|
 
@@ -28,6 +28,10 @@ Now compile and run Janus::
         ./target/appassembler/bin/janus server config-template.yml
 
 or use the Dockerfile, ``docker run --net=host $(docker build -q .)``.
+
+Under ``elasticsearch.fields`` in the config file is mapping from XML
+elements (using XPath) to fields in Elasticsearch. To see what this does,
+upload a document to have it indexed:
 
 You can now upload an XML file to Janus to have it indexed as a document
 with one annotation per XML element::
@@ -132,7 +136,8 @@ Special support for XML
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Janus has special support for XML documents, which are parsed and turned into
-a flat text document and one annotation per XML element.
+a flat text document and one annotation per XML element. The configuration
+file has more details on the way the XML is parsed.
 
 The text document corresponds to the text in between the tags; in XPath
 terminology, it's the ``string()`` of the whole document. Each element is
@@ -145,6 +150,11 @@ turned into an annotation with the following properties:
   in the text document.
 * The attributes of the tag are stored in the ``"attrib"`` field, as strings.
 * The ``body`` is empty (null).
+
+To get the XML document as you uploaded it, use the ``/orig`` path on the
+document, e.g.::
+
+    curl http://localhost:8080/documents/some_id/orig
 
 
 Example: bulk indexing

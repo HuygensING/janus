@@ -1,0 +1,7 @@
+<doc title="example" author="me">
+
+<body>
+This is the document <important who="you">body</important>.
+</body>
+
+</doc>
