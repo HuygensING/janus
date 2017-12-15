@@ -88,7 +88,11 @@ import static org.elasticsearch.index.query.QueryBuilders.wrapperQuery;
 import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
 
 /**
- * Backend that stores documents and annotations in an Elasticsearch cluster.
+ * Stores documents and annotations in an Elasticsearch cluster and on disk.
+ * <p>
+ * Instances of this class manage a directory of XML files (the "originals")
+ * and two Elasticsearch indexes that represent the text+metadata and annotations
+ * in these files. The two are kept in sync.
  */
 public class ElasticBackend implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticBackend.class);
@@ -164,6 +168,11 @@ public class ElasticBackend implements AutoCloseable {
 
   private final String esSearchEndpoint;
 
+  // Storage of originals. The OriginalStore uses locking to serialize concurrent updates
+  // to the originals. We use that to also serialize concurrent updates to the Elasticsearch
+  // indices, but we permit concurrent queries without locking, so clients may see
+  // inconsistent results while an update is taking place, in keeping with ES's eventual
+  // consistency semantics.
   private final OriginalStore origStore;
 
   /**
