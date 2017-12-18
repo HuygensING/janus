@@ -35,6 +35,7 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
+import org.elasticsearch.script.ScriptType;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
@@ -770,11 +771,10 @@ public class ElasticBackend implements AutoCloseable {
   // Painless script to find co-occurrences of two fields' values.
   // Because of return type limitations, we have to return a single string
   // to represent a pair. The SEPARATOR is chosen to be as unlikely as possible.
-  // It must not contain a %, since it will be passed through String.format.
   private static final String SEPARATOR = "$$\t\t^^__";
   private static final String PAIR_QUERY =
-    "  def s = doc['%s'].value;" +
-      "def r = doc['%s'].value;" +
+    "  def s = doc[params.field1].value;" +
+      "def r = doc[params.field2].value;" +
       "if (s.compareTo(r) < 0) { s + '" + SEPARATOR + "' + r } else { r + '" + SEPARATOR + "' + s }";
 
   /**
@@ -800,7 +800,8 @@ public class ElasticBackend implements AutoCloseable {
           .query(QueryBuilders.boolQuery().filter(wrapperQuery(filterExpr)))
           .size(0)
           .aggregation(AggregationBuilders.terms("pairs")
-                                          .script(new Script(String.format(PAIR_QUERY, field1, field2)))
+                                          .script(new Script(ScriptType.INLINE, "painless", PAIR_QUERY,
+                                            ImmutableMap.of("field1", field1, "field2", field2)))
                                           .size(10000))
       );
 
