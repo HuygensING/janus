@@ -307,11 +307,14 @@ public class ElasticBackend implements AutoCloseable {
         new InputStreamEntity(ElasticBackend.class.getResourceAsStream(ANNOTATION_MAPPING_IN_JSON)));
     }
     if (!indexExists(documentIndex)) {
+      Map analyzer = mapper.readValue(ElasticBackend.class.getResourceAsStream("/elision-analyzer.json"), Map.class);
+
       org.elasticsearch.client.Response r = loClient.performRequest("PUT", documentIndex,
         Collections.emptyMap(), new StringEntity(mapper.writeValueAsString(
           ImmutableMap.<String, Object>of(
-            "mappings", ImmutableMap.<String, Object>of(
-              documentType, mapping.asMap())))));
+            "mappings", ImmutableMap.<String, Object>of(documentType, mapping.asMap()),
+            "settings", analyzer)
+        )));
       int code = r.getStatusLine().getStatusCode();
       if (!success(code)) {
         throw new RuntimeException(String.format("creating document index: %d", code));

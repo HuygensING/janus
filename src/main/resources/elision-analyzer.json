@@ -1,0 +1,33 @@
+{
+  "analysis": {
+    "analyzer": {
+      "default": {
+        "tokenizer": "standard",
+        "filter": [
+          "standard",
+          "elision"
+        ]
+      }
+    },
+    "filter": {
+      "elision": {
+        "type": "elision",
+        "articles": [
+          "c",
+          "d",
+          "j",
+          "jusqu",
+          "l",
+          "lorsqu",
+          "m",
+          "n",
+          "puisqu",
+          "qu",
+          "quoiqu",
+          "s",
+          "t"
+        ]
+      }
+    }
+  }
+}
