@@ -5,12 +5,18 @@
         "tokenizer": "standard",
         "filter": [
           "standard",
-          "elision"
+          "janus_asciifolding",
+          "lowercase",
+          "janus_elision"
         ]
       }
     },
     "filter": {
-      "elision": {
+      "janus_asciifolding": {
+          "type": "asciifolding",
+          "preserve_original": true
+      },
+      "janus_elision": {
         "type": "elision",
         "articles": [
           "c",
