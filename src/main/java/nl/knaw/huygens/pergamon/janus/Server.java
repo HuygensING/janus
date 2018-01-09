@@ -110,6 +110,9 @@ public class Server extends Application<Server.Config> {
     @JsonProperty
     @NotEmpty
     private List<Mapping.Field> fields;
+
+    @JsonProperty
+    private List<Mapping.Namespace> namespaces;
   }
 
   static class ServiceConfig {
@@ -215,7 +218,7 @@ public class Server extends Application<Server.Config> {
   }
 
   private ElasticBackend createBackend(Config config) throws IOException {
-    Mapping mapping = new Mapping(config.es.fields, false);
+    Mapping mapping = new Mapping(config.es.fields, config.es.namespaces, false);
 
     final ElasticBackend backend =
       new ElasticBackend(config.es.hosts, config.es.documentIndex, config.es.documentType, mapping,

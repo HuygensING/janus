@@ -37,6 +37,11 @@ elasticsearch:
     #  type: "date"
     #  xpath: "/doc/@date"
 
+  # Namespace prefixes for the XPath expressions in fields.
+  #namespaces:
+  #  - prefix: "tei"
+  #    url: "http://www.tei-c.org/ns/1.0"
+
 jerseyClient:
   timeout: 1m
 

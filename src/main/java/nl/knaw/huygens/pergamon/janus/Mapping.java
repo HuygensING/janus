@@ -7,7 +7,9 @@ import nu.xom.Element;
 import nu.xom.Node;
 import nu.xom.Nodes;
 import nu.xom.ParsingException;
+import nu.xom.XPathContext;
 import org.apache.commons.lang3.tuple.Triple;
+import org.hibernate.validator.constraints.NotEmpty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,12 +31,15 @@ public class Mapping {
   public static class Field {
     // Name of field in Elasticsearch
     @JsonProperty
+    @NotEmpty
     private String name;
     // Type of field, e.g., keyword, date.
     @JsonProperty
+    @NotEmpty
     private String type;
     // XPath expression to find field value in XML.
     @JsonProperty
+    @NotEmpty
     private String xpath;
 
     Field() {
@@ -47,8 +52,29 @@ public class Mapping {
     }
   }
 
+  /**
+   * A namespace prefix for the XPath expressions in fields.
+   */
+  public static class Namespace {
+    @JsonProperty
+    @NotEmpty
+    private String prefix;
+    @JsonProperty
+    @NotEmpty
+    private String url;
+
+    Namespace() {
+    }
+
+    Namespace(String prefix, String url) {
+      this.prefix = prefix;
+      this.url = url;
+    }
+  }
+
   private final boolean strict;
   private final List<Field> fields;
+  private final XPathContext xpathctx = new XPathContext();
 
   // Elasticsearch mapping, in a json'able format.
   private final Map<String, Object> mapping;
@@ -75,7 +101,11 @@ public class Mapping {
    *               text.
    * @param strict Whether to throw an exception when an XPath expression returns no result.
    */
-  public Mapping(List<Field> fields, boolean strict) {
+  Mapping(List<Field> fields, boolean strict) {
+    this(fields, null, strict);
+  }
+
+  public Mapping(List<Field> fields, List<Namespace> namespaces, boolean strict) {
     if (fields.isEmpty()) {
       throw new IllegalArgumentException("mapping must have at least one field");
     }
@@ -89,13 +119,17 @@ public class Mapping {
     HashMap<String, Object> properties = new HashMap<>();
     mapping.put("properties", properties);
 
+    if (namespaces != null) {
+      namespaces.forEach(ns -> xpathctx.addNamespace(ns.prefix, ns.url));
+    }
+
     fields.forEach(field -> {
       if (properties.containsKey(field.name)) {
         throw new IllegalArgumentException("duplicate field name " + field.name);
       }
 
       // Validate XPath by trying it on a trivial document.
-      NULLDOC.query(field.xpath);
+      NULLDOC.query(field.xpath, xpathctx);
 
       Map<String, String> typeMap = new HashMap<>();
       typeMap.put("type", field.type);
@@ -116,7 +150,7 @@ public class Mapping {
 
     Element body;
     try {
-      Node node = root.query(fields.get(0).xpath).get(0);
+      Node node = root.query(fields.get(0).xpath, xpathctx).get(0);
       if (node instanceof Document) {
         body = ((Document) node).getRootElement();
       } else {
@@ -128,7 +162,7 @@ public class Mapping {
     Map<String, String> fieldValues = new HashMap<>();
 
     for (Field field : fields.subList(1, fields.size())) {
-      Nodes values = root.query(field.xpath);
+      Nodes values = root.query(field.xpath, xpathctx);
       if (values.size() < 1) {
         String msg = "no value for field " + field.name;
         if (strict) {

@@ -3,8 +3,10 @@ package nl.knaw.huygens.pergamon.janus;
 import io.dropwizard.jackson.Jackson;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
 import nu.xom.Document;
+import nu.xom.Element;
 import nu.xom.ParsingException;
 import nu.xom.XPathException;
+import org.apache.commons.lang3.tuple.Triple;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -50,6 +52,22 @@ public class TestMapping {
     wantedDoc.put("published", "today");
     wantedDoc.put("author", "me");
     assertEquals(wantedDoc, mapping.apply(doc).getRight());
+  }
+
+  @Test
+  public void namespaces() throws IOException, ParsingException {
+    Mapping mapping = new Mapping(
+      asList(new Mapping.Field("body", "text", "/foo:doc/bar:body")),
+      asList(
+        new Mapping.Namespace("foo", "http://example.com/foo"),
+        new Mapping.Namespace("bar", "http://example.com/bar")),
+      true);
+
+    Document doc = XmlParser.fromString(
+      "<foo:doc xmlns:foo=`http://example.com/foo` xmlns:bar=`http://example.com/bar`><bar:body>ok</bar:body></foo:doc>"
+        .replace('`', '"'));
+    Triple<String, Element, Map<String, String>> r = mapping.apply(doc);
+    assertEquals("ok", r.getMiddle().getValue());
   }
 
   @Test(expected = IllegalArgumentException.class)
