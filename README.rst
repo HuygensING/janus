@@ -146,7 +146,7 @@ turned into an annotation with the following properties:
 * The ``source`` of the annotation is ``"xml"``.
 * The ``type`` is its XML tag.
 * The ``target`` is the document's id.
-* The ``start`` and ``end`` denote where the start and end tags where found
+* The ``start`` and ``end`` denote where the start and end tags were found
   in the text document.
 * The attributes of the tag are stored in the ``"attrib"`` field, as strings.
 * The ``body`` is empty (null).
