@@ -2,6 +2,7 @@ package nl.knaw.huygens.pergamon.janus;
 
 import com.google.common.collect.ImmutableMap;
 import io.dropwizard.jackson.Jackson;
+import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.TermQueryBuilder;
@@ -28,6 +29,7 @@ import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 public class TestElasticBackendIntegration {
@@ -302,6 +304,23 @@ public class TestElasticBackendIntegration {
     return result.id;
   }
 
+  @Test
+  public void ftsElision() throws Exception {
+    ElasticBackend.PutResult res = backend.putTxt(null, "l'île d'islande");
+    assertEquals(201, res.status);
+
+    retry(() -> {
+      // Quickest way to do a query string query.
+      try {
+        ElasticBackend.ListPage list =
+          backend.listDocs("{`query_string`: {`query`: `islande`}}".replace('`', '"'), 0, 10);
+        assertTrue(list.result.contains(res.id));
+      } catch (ElasticsearchStatusException e) {
+        assertTrue(false);
+      }
+    });
+  }
+
   // Block of code with assertions. May return a value for convenience.
   private interface Assertion<T> {
     T run() throws Exception;
@@ -316,7 +335,7 @@ public class TestElasticBackendIntegration {
 
   // Retries an assertion at most repeats times, sleeping millis in between.
   private static <T> T retry(Assertion<T> assertion) throws Exception {
-    for (int i = 1; i < REPEATS; i++) {
+    for (int i = 0; i < REPEATS; i++) {
       try {
         return assertion.run();
       } catch (AssertionError e) {
