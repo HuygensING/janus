@@ -1,8 +1,5 @@
 package nl.knaw.huygens.pergamon.janus;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -17,6 +14,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
 
@@ -32,8 +30,6 @@ import static nl.knaw.huygens.pergamon.janus.Identifier.requireValid;
  * hierarchy are properly locked.
  */
 public class OriginalStore {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticBackend.class);
-
   private final Path dir;
   // one lock per $hash0/$hash1
   private final ReadWriteLock locks[] = new ReentrantReadWriteLock[256 * 256];
@@ -63,35 +59,23 @@ public class OriginalStore {
     }
   }
 
-  // Base class of LockedReader and Writer.
-  private class BaseReader {
+  private class LockedReader implements AutoCloseable {
     final int hash;
     final String id;
     final Path path;
 
-    private BaseReader(String id, int hash) {
+    private LockedReader(String id) throws TimeoutException {
       requireValid(id);
-
-      this.hash = hash;
+      this.hash = hash(id);
       this.id = id;
       path = getPath(id, hash);
-    }
-
-    byte[] get() throws IOException, TimeoutException {
-      return Files.readAllBytes(path);
-    }
-  }
-
-  private class LockedReader extends BaseReader implements AutoCloseable {
-    private LockedReader(String id) throws TimeoutException {
-      super(id, hash(id));
 
       try {
         if (locks[hash].readLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
           return;
         }
       } catch (InterruptedException e) {
-        // Proceed and return TimeoutException.
+        // Proceed to throw TimeoutException.
       }
       throw new TimeoutException("could not get lock for " + getParent(hash));
     }
@@ -100,81 +84,118 @@ public class OriginalStore {
     public void close() {
       locks[hash].readLock().unlock();
     }
+
+    byte[] get() throws IOException, TimeoutException {
+      return Files.readAllBytes(path);
+    }
   }
 
-  /**
-   * A Writer is used to write to/delete the original contents of a specific id.
-   */
-  public class Writer extends BaseReader implements AutoCloseable {
-    private final boolean overwrite;
-    private Path tmp = null;
+  public abstract class WriteOp implements AutoCloseable {
+    protected final int hash;
+    protected Path path;
 
-    private Writer(String id, boolean overwrite) throws FileAlreadyExistsException, TimeoutException {
-      super(id, hash(id));
-      this.overwrite = overwrite;
+    private WriteOp(String id) throws TimeoutException {
+      requireValid(id);
+      this.hash = hash(id);
+      path = getPath(id, hash);
 
       try {
         if (locks[hash].writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
           return;
         }
       } catch (InterruptedException e) {
-        // Proceed and return TimeoutException.
+        // Throw TimeoutException below.
       }
       throw new TimeoutException("could not get lock for " + getParent(hash));
     }
 
     @Override
     public void close() throws IOException {
-      if (tmp != null) {
-        Files.move(tmp, path, REPLACE_EXISTING);
-      }
       locks[hash].writeLock().unlock();
     }
 
-    public void delete() throws IOException {
-      Files.delete(getPath(id, hash));
+    /**
+     * A WriteOp doesn't take place until it is committed.
+     */
+    public abstract void commit() throws IOException;
+
+    /**
+     * Checks if there is any work to be done for this WriteOp.
+     * <p>
+     * This can be used to check whether an original exists before deletion
+     * or has the desired contents for a replace. If it returns true, no ES
+     * queries need to be performed.
+     */
+    public abstract boolean noop() throws IOException;
+  }
+
+  private class Delete extends WriteOp {
+    private Delete(String id) throws TimeoutException {
+      super(id);
     }
 
-    public byte[] getIfExists() throws IOException, TimeoutException {
-      try {
-        return get();
-      } catch (NoSuchFileException e) {
-        return null;
-      }
+    @Override
+    public void commit() throws IOException {
+      Files.delete(path);
+      path = null; // guard against multiple commit
     }
 
-    public void put(String content) throws IOException, TimeoutException {
+    @Override
+    public boolean noop() {
+      return !Files.exists(path);
+    }
+  }
+
+  private class Put extends WriteOp {
+    private final String content;
+    private final boolean overwrite;
+
+    private Put(String id, String content, boolean overwrite) throws TimeoutException {
+      super(id);
+      this.content = content;
+      this.overwrite = overwrite;
+    }
+
+    @Override
+    public void commit() throws IOException {
       if (!overwrite && Files.exists(path)) {
         throw new FileAlreadyExistsException(path.toString());
       }
+
       Path dir = getParent(hash);
       mkdir(dir.getParent());
       mkdir(dir);
-      tmp = Files.createTempFile(dir, ".tmp_", "");
+      Path tmp = Files.createTempFile(dir, ".tmp_", "");
 
       try (BufferedWriter out = Files.newBufferedWriter(tmp)) {
         out.write(content);
+        Files.move(tmp, path, ATOMIC_MOVE, REPLACE_EXISTING);
       } catch (Throwable e) {
         Files.delete(tmp);
-        tmp = null;
         throw e;
+      }
+    }
+
+    @Override
+    public boolean noop() throws IOException {
+      try {
+        return overwrite && new String(Files.readAllBytes(path)).equals(content);
+      } catch (NoSuchFileException e) {
+        return false;
       }
     }
   }
 
-  /**
-   * Equivalent to writer(id, false).
-   */
-  public Writer writer(String id) throws TimeoutException {
-    try {
-      return writer(id, false);
-    } catch (FileAlreadyExistsException e) {
-      throw new RuntimeException(e); // can't happen
-    }
+  public WriteOp delete(String id) throws TimeoutException {
+    return new Delete(id);
   }
 
-  public Writer writer(String id, boolean overwrite) throws FileAlreadyExistsException, TimeoutException {
-    return new Writer(id, overwrite);
+  public WriteOp put(String id, String content) throws TimeoutException {
+    return new Put(id, content, false);
+  }
+
+  public WriteOp replace(String id, String content) throws TimeoutException {
+    return new Put(id, content, true);
   }
 
   private void mkdir(Path dir) throws IOException {

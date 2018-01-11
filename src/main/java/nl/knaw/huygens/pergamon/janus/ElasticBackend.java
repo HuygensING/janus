@@ -569,13 +569,12 @@ public class ElasticBackend implements AutoCloseable {
   }
 
   public PutResult putJSON(String id, String content) throws IOException {
-    try (OriginalStore.Writer wr = origStore.writer(id)) {
-      wr.put(content);
-
+    try (OriginalStore.WriteOp put = origStore.put(id, content)) {
       // TODO parse and check if content has body field?
       try {
         IndexResponse response =
           hiClient.index(indexRequest(documentIndex).type(documentType).id(id).source(content, JSON));
+        put.commit();
         return makePutResult(response);
       } catch (ElasticsearchException e) {
         return new PutResult(id, e.status().getStatus(), e.toString());
@@ -594,18 +593,14 @@ public class ElasticBackend implements AutoCloseable {
       // ActionRequestValidationException: an id must be provided if version type or value are set
       id = UUID.randomUUID().toString();
     }
-    try (OriginalStore.Writer wr = origStore.writer(id)) {
-      wr.put(content);
 
-      try {
-        IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
-                                                      .source(jsonBuilder().startObject()
-                                                                           .field("body", content)
-                                                                           .endObject());
-        return makePutResult(hiClient.index(req));
-      } catch (ElasticsearchStatusException e) {
-        return new PutResult(e.toString(), e.status().getStatus());
-      }
+    try (OriginalStore.WriteOp put = origStore.put(id, content)) {
+      IndexRequest req = indexRequest(documentIndex).type(documentType).id(id).create(true)
+                                                    .source(jsonBuilder().startObject()
+                                                                         .field("body", content)
+                                                                         .endObject());
+      put.commit();
+      return makePutResult(hiClient.index(req));
     } catch (FileAlreadyExistsException e) {
       return new PutResult(String.format("%s already exists in file store", id), 409);
     } catch (TimeoutException e) {
@@ -620,16 +615,18 @@ public class ElasticBackend implements AutoCloseable {
     if (id == null) {
       id = UUID.randomUUID().toString();
     }
-    try (OriginalStore.Writer wr = origStore.writer(id)) {
-      wr.put(document);
 
+    try (OriginalStore.WriteOp put = origStore.put(id, document)) {
       Document xml = XmlParser.fromString(document);
       Triple<String, Element, Map<String, String>> fields = mapping.apply(xml);
 
       // first field is the special "body" field
       TaggedCodepoints body = new TaggedCodepoints(fields.getMiddle(), id);
 
-      return putXml(fields.getLeft(), body, fields.getRight());
+      PutResult r = putXml(fields.getLeft(), body, fields.getRight());
+
+      put.commit();
+      return r;
     } catch (FileAlreadyExistsException e) {
       return new PutResult(id, CONFLICT);
     } catch (TimeoutException e) {
@@ -697,51 +694,44 @@ public class ElasticBackend implements AutoCloseable {
    * Deletes a document and all annotations pointing to it (directly or indirectly).
    */
   public RestStatus delete(String id) throws IOException {
-    try (OriginalStore.Writer wr = origStore.writer(id)) {
-      return delete(wr, id);
+    DeleteResponse docDel = null;
+
+    try (OriginalStore.WriteOp del = origStore.delete(id)) {
+      org.elasticsearch.client.Response annR =
+        loClient.performRequest("POST", String.format("%s/%s/_delete_by_query", annotationIndex, annotationType),
+          Collections.emptyMap(),
+          new StringEntity(
+            mapper.writeValueAsString(
+              ImmutableMap.of("query", ImmutableMap.of("term", ImmutableMap.of("root", id))))));
+      if (annR.getStatusLine().getStatusCode() != 200) {
+        LOG.warn("Got {} when deleting annotation for {}", annR.getStatusLine().getStatusCode(), id);
+      }
+
+      docDel = hiClient.delete(new DeleteRequest(documentIndex, documentType, id));
+
+      del.commit();
+    } catch (NoSuchFileException e) {
+      assert docDel != null;
+      if (docDel.status() == RestStatus.OK) {
+        LOG.warn("{} was in Elasticsearch but not in the file store", id);
+      }
     } catch (TimeoutException e) {
       return RestStatus.REQUEST_TIMEOUT;
     }
-  }
-
-  private RestStatus delete(OriginalStore.Writer wr, String id) throws IOException {
-    boolean fileFound = true;
-    try {
-      wr.delete();
-    } catch (NoSuchFileException e) {
-      // Even if the original was not present, try to delete its parts from Elasticsearch.
-      fileFound = false;
-    }
-
-    org.elasticsearch.client.Response annR =
-      loClient.performRequest("POST", String.format("%s/%s/_delete_by_query", annotationIndex, annotationType),
-        Collections.emptyMap(),
-        new StringEntity(
-          mapper.writeValueAsString(
-            ImmutableMap.of("query", ImmutableMap.of("term", ImmutableMap.of("root", id))))));
-    if (annR.getStatusLine().getStatusCode() != 200) {
-      LOG.warn("Got {} when deleting annotation for {}", annR.getStatusLine().getStatusCode(), id);
-    }
-
-    DeleteResponse docR =
-      hiClient.delete(new DeleteRequest(documentIndex, documentType, id));
-    if (docR.status() == RestStatus.OK && !fileFound) {
-      LOG.warn("{} was in Elasticsearch but not in the file store", id);
-    }
-    return docR.status();
+    return docDel.status();
   }
 
   public PutResult updateXml(String id, String content) throws IOException {
     if (id == null) {
       throw new NullPointerException("id should not be null");
     }
-    try (OriginalStore.Writer wr = origStore.writer(id, true)) {
-      byte[] orig = wr.getIfExists();
-      if (orig != null && content.equals(new String(orig))) {
+    try (OriginalStore.WriteOp replace = origStore.replace(id, content)) {
+      if (replace.noop()) {
         return new PutResult(id, 200);
       }
-      delete(wr, id);
-      return putXml(id, content);
+      PutResult r = putXml(id, content);
+      replace.commit();
+      return r;
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
     }

@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class TestOriginalStore {
   private static OriginalStore store = null;
@@ -43,16 +44,14 @@ public class TestOriginalStore {
 
   @Test
   public void writer() throws IOException, TimeoutException {
-    try (OriginalStore.Writer wr = store.writer("hello")) {
-      wr.put("hello, world!");
+    try (OriginalStore.WriteOp put = store.put("hello", "hello, world!")) {
+      put.commit();
     }
     assertEquals("hello, world!", new String(store.get("hello")));
 
-    try (OriginalStore.Writer wr = store.writer("hello", true)) {
-      assertEquals("hello, world!", new String(wr.get()));
-      wr.put("goodbye!");
-      // As long as the writer has not been closed, the old content stays put.
-      assertEquals("hello, world!", new String(wr.get()));
+    try (OriginalStore.WriteOp replace = store.replace("hello", "goodbye!")) {
+      assertFalse(replace.noop());
+      replace.commit();
     }
     assertEquals("goodbye!", new String(store.get("hello")));
   }

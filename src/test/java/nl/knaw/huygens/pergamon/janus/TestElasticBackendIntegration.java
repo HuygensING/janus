@@ -18,11 +18,13 @@ import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -296,6 +298,17 @@ public class TestElasticBackendIntegration {
   //     assertEquals("2", r.get(1).get("target"));
   //   });
   // }
+
+  @Test
+  public void invalidXml() throws IOException, TimeoutException {
+    ElasticBackend.PutResult result = backend.putXml("invalid_id", "<?foo//>");
+    try {
+      backend.getOriginal("invalid_id");
+    } catch (NoSuchFileException e) {
+      return; // this is what we want
+    }
+    throw new RuntimeException("invalid XML original was stored");
+  }
 
   private String putXml(String xml) throws IOException {
     ElasticBackend.PutResult result = backend.putXml(null, xml);
