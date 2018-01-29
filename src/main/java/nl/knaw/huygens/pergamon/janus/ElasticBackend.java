@@ -11,12 +11,14 @@ import nl.knaw.huygens.pergamon.janus.xml.TaggedCodepoints;
 import nl.knaw.huygens.pergamon.janus.xml.XmlParser;
 import nu.xom.Document;
 import nu.xom.Element;
+import nu.xom.ParsingException;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.http.HttpHost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.action.DocWriteResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -617,28 +619,29 @@ public class ElasticBackend implements AutoCloseable {
     }
 
     try (OriginalStore.WriteOp put = origStore.put(id, document)) {
-      Document xml = XmlParser.fromString(document);
-      Triple<String, Element, Map<String, String>> fields = mapping.apply(xml);
-
-      // first field is the special "body" field
-      TaggedCodepoints body = new TaggedCodepoints(fields.getMiddle(), id);
-
-      PutResult r = putXml(fields.getLeft(), body, fields.getRight());
+      PutResult r = putXml(id, document, false);
 
       put.commit();
       return r;
     } catch (FileAlreadyExistsException e) {
+      System.out.println("hier");
       return new PutResult(id, CONFLICT);
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
-    } catch (Throwable e) {
+    } catch (ParsingException e) {
       return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
 
-  private PutResult putXml(String bodyField, TaggedCodepoints body, Map<String, String> fields) throws IOException {
+  private PutResult putXml(String docId, String document, boolean overwrite) throws IOException, ParsingException {
     // TODO: handle partial failures better.
-    String docId = body.docId;
+
+    Document xml = XmlParser.fromString(document);
+    Triple<String, Element, Map<String, String>> mapped = mapping.apply(xml);
+    // first field is the special "body" field
+    TaggedCodepoints body = new TaggedCodepoints(mapped.getMiddle(), docId);
+    String bodyField = mapped.getLeft();
+    Map<String, String> fields = mapped.getRight();
 
     XContentBuilder doc = jsonBuilder().startObject()
                                        .field(bodyField, body.text());
@@ -649,11 +652,16 @@ public class ElasticBackend implements AutoCloseable {
     doc.endObject();
 
     IndexResponse response = hiClient.index(indexRequest(documentIndex)
-      .type(documentType).id(docId).create(true)
+      .type(documentType).id(docId).create(!overwrite)
       .source(doc));
     int status = response.status().getStatus();
     if (!success(status)) {
       return new PutResult(null, status);
+    }
+    if (response.getResult().equals(DocWriteResponse.Result.UPDATED)) {
+      // If we're overwriting docId, we need to delete the annotations separately,
+      // because the ids are going to be freshly generated.
+      deleteAnnotations(docId);
     }
 
     List<Annotation> tags = body.tags();
@@ -697,18 +705,8 @@ public class ElasticBackend implements AutoCloseable {
     DeleteResponse docDel = null;
 
     try (OriginalStore.WriteOp del = origStore.delete(id)) {
-      org.elasticsearch.client.Response annR =
-        loClient.performRequest("POST", String.format("%s/%s/_delete_by_query", annotationIndex, annotationType),
-          Collections.emptyMap(),
-          new StringEntity(
-            mapper.writeValueAsString(
-              ImmutableMap.of("query", ImmutableMap.of("term", ImmutableMap.of("root", id))))));
-      if (annR.getStatusLine().getStatusCode() != 200) {
-        LOG.warn("Got {} when deleting annotation for {}", annR.getStatusLine().getStatusCode(), id);
-      }
-
+      deleteAnnotations(id);
       docDel = hiClient.delete(new DeleteRequest(documentIndex, documentType, id));
-
       del.commit();
     } catch (NoSuchFileException e) {
       assert docDel != null;
@@ -721,6 +719,18 @@ public class ElasticBackend implements AutoCloseable {
     return docDel.status();
   }
 
+  private void deleteAnnotations(String id) throws IOException {
+    org.elasticsearch.client.Response annR =
+      loClient.performRequest("POST", String.format("%s/%s/_delete_by_query", annotationIndex, annotationType),
+        Collections.emptyMap(),
+        new StringEntity(
+          mapper.writeValueAsString(
+            ImmutableMap.of("query", ImmutableMap.of("term", ImmutableMap.of("root", id))))));
+    if (annR.getStatusLine().getStatusCode() != 200) {
+      LOG.warn("Got {} when deleting annotation for {}", annR.getStatusLine().getStatusCode(), id);
+    }
+  }
+
   public PutResult updateXml(String id, String content) throws IOException {
     if (id == null) {
       throw new NullPointerException("id should not be null");
@@ -729,11 +739,13 @@ public class ElasticBackend implements AutoCloseable {
       if (replace.noop()) {
         return new PutResult(id, 200);
       }
-      PutResult r = putXml(id, content);
+      PutResult r = putXml(id, content, true);
       replace.commit();
       return r;
     } catch (TimeoutException e) {
       return new PutResult(id, REQUEST_TIMEOUT);
+    } catch (ParsingException e) {
+      return new PutResult(id, BAD_REQUEST, e.toString());
     }
   }
 

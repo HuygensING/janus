@@ -301,13 +301,28 @@ public class TestElasticBackendIntegration {
 
   @Test
   public void invalidXml() throws IOException, TimeoutException {
-    ElasticBackend.PutResult result = backend.putXml("invalid_id", "<?foo//>");
+    backend.putXml("invalid_id", "<?foo//>");
     try {
       backend.getOriginal("invalid_id");
     } catch (NoSuchFileException e) {
       return; // this is what we want
     }
     throw new RuntimeException("invalid XML original was stored");
+  }
+
+  @Test
+  public void updateXml() throws Exception {
+    ElasticBackend.PutResult r = backend.putXml("to_replace", "<body><anno>hello</anno></body>");
+    if (r.status < 200 || r.status >= 300) {
+      throw new RuntimeException(r.message);
+    }
+
+    r = backend.updateXml("to_replace", "<body><anno>goodbye</anno></body>");
+    if (r.status < 200 || r.status >= 300) {
+      System.out.println(r.status);
+      System.out.println(r.message);
+      throw new RuntimeException(r.message);
+    }
   }
 
   private String putXml(String xml) throws IOException {
