@@ -8,6 +8,8 @@ import io.swagger.annotations.ApiResponses;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Text;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.ws.rs.Consumes;
@@ -26,7 +28,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.TimeoutException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.REQUEST_TIMEOUT;
@@ -205,5 +210,39 @@ public class DocumentsResource {
   @Consumes(MediaType.APPLICATION_XML)
   public Response putXml(@PathParam("id") String id, String content) throws IOException {
     return backend.updateXml(id, content).asResponse();
+  }
+
+  @POST
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  public Response putZip(@FormDataParam("file") InputStream input,
+                         @FormDataParam("file") FormDataContentDisposition disp) throws IOException {
+    int status = 200;
+    ZipInputStream z = new ZipInputStream(input);
+    for (ZipEntry entry; (entry = z.getNextEntry()) != null; ) {
+      if (entry.isDirectory()) {
+        continue;
+      }
+      String name = entry.getName();
+      if (name.endsWith(".xml")) {
+        name = name.substring(0, name.length() - 4);
+      }
+
+      long size = entry.getSize();
+      if (size > Integer.MAX_VALUE) {
+        throw new IllegalArgumentException(String.format("file too long: max %d bytes", Integer.MAX_VALUE));
+      }
+      byte[] content = new byte[(int) entry.getSize()];
+      while (size > 0) {
+        size -= z.read(content, content.length - (int) size, (int) size);
+      }
+      Response r = putXml(name, new String(content));
+      if (r.getStatus() >= 500) {
+        status = r.getStatus();
+        break;
+      } else if (r.getStatus() > 200 && status < 300) {
+        status = r.getStatus();
+      }
+    }
+    return Response.status(status).build();
   }
 }
